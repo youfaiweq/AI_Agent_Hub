@@ -26,4 +26,12 @@ npm run type-check
 npm run build
 ```
 
-The current shell contains only the Dashboard and backend connectivity status. Authentication, knowledge-base, chat, and agent screens are intentionally deferred to later milestones.
+The current frontend includes:
+
+- Login and registration with JWT session persistence
+- Protected workspace routes and sign-out
+- Knowledge base create, list, edit, detail, and delete flows
+- PDF/TXT/Markdown document upload, list, status, and delete flows
+- Loading, empty, validation, API error, and delete confirmation states
+
+Chat, RAG, and Agent screens are intentionally deferred to later milestones.

@@ -33,7 +33,7 @@ onMounted(() => {
           modular workspace.
         </p>
       </div>
-      <div class="hero-badge">v0.1</div>
+      <div class="hero-badge">v0.2</div>
     </section>
 
     <el-alert v-if="systemStore.error" :title="systemStore.error" type="warning" show-icon />
@@ -55,7 +55,7 @@ onMounted(() => {
       <el-card shadow="never" class="summary-card">
         <div class="card-label">Next milestone</div>
         <div class="card-value">Knowledge foundation</div>
-        <div class="card-meta">Auth and knowledge base are next</div>
+        <div class="card-meta">Documents and retrieval foundation</div>
       </el-card>
     </section>
 

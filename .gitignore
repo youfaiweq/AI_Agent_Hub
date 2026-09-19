@@ -28,3 +28,22 @@ frontend/dist/
 # Local data
 docker-data/
 backend/.coverage
+
+# Logs and coverage reports
+*.log
+*.local
+coverage.xml
+htmlcov/
+
+# Local credentials, certificates, and private data
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.db
+secrets/
+credentials/
+uploads/
+private-data/

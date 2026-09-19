@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
+
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 const currentTitle = computed(() => String(route.meta.title ?? 'AgentHub'))
+
+function logout(): void {
+  authStore.logout()
+  void router.push('/login')
+}
 </script>
 
 <template>
@@ -23,11 +33,15 @@ const currentTitle = computed(() => String(route.meta.title ?? 'AgentHub'))
           <span class="nav-indicator" />
           Dashboard
         </RouterLink>
+        <RouterLink to="/knowledge-bases" class="side-nav-item" active-class="is-active">
+          <span class="nav-indicator" />
+          Knowledge bases
+        </RouterLink>
       </nav>
 
       <div class="sidebar-footer">
         <span class="status-dot" />
-        Foundation v0.1
+        Foundation v0.2
       </div>
     </el-aside>
 
@@ -37,7 +51,10 @@ const currentTitle = computed(() => String(route.meta.title ?? 'AgentHub'))
           <div class="page-eyebrow">AgentHub workspace</div>
           <h1>{{ currentTitle }}</h1>
         </div>
-        <el-tag type="info" effect="plain">Development</el-tag>
+        <div class="header-account">
+          <span>{{ authStore.user?.email }}</span>
+          <el-button link type="info" @click="logout">Sign out</el-button>
+        </div>
       </el-header>
 
       <el-main class="app-main">

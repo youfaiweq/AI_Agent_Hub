@@ -11,7 +11,7 @@ def test_system_info_returns_public_application_metadata() -> None:
     assert response.status_code == 200
     assert response.json() == {
         "name": "AgentHub",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "environment": "development",
     }
 

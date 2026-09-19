@@ -1,8 +1,9 @@
 # AgentHub
 
 AgentHub is an enterprise AI knowledge and task-agent platform. The current
-release is v0.1, the foundation slice. Authentication, knowledge-base business
-logic, RAG, and Agent features are intentionally deferred to later milestones.
+release is v0.2, covering authentication, user-owned knowledge bases, and
+document metadata/object storage. RAG and Agent features are intentionally
+deferred to later milestones.
 
 ## Requirements
 
@@ -46,6 +47,20 @@ Backend URLs:
 - Swagger: <http://127.0.0.1:8000/docs>
 - Health: <http://127.0.0.1:8000/health>
 - System info: <http://127.0.0.1:8000/api/v1/system/info>
+- Register: `POST http://127.0.0.1:8000/api/v1/auth/register`
+- Login: `POST http://127.0.0.1:8000/api/v1/auth/login`
+- Current user: `GET http://127.0.0.1:8000/api/v1/auth/me`
+- Knowledge bases: `GET/POST http://127.0.0.1:8000/api/v1/knowledge-bases`
+- Knowledge base detail: `GET/PATCH/DELETE http://127.0.0.1:8000/api/v1/knowledge-bases/{id}`
+- Documents: `POST/GET http://127.0.0.1:8000/api/v1/knowledge-bases/{id}/documents`
+- Document detail: `GET/DELETE http://127.0.0.1:8000/api/v1/knowledge-bases/{id}/documents/{document_id}`
+
+Authentication uses Argon2 password hashes and short-lived JWT access tokens.
+Set `JWT_SECRET_KEY` in the local `.env` before any non-development deployment.
+
+The current document slice accepts PDF, TXT, and Markdown uploads, stores the
+original object in MinIO, and persists only metadata plus `storage_key` in
+PostgreSQL. Parsing and RAG are deferred to v0.3.
 
 ## Start frontend
 

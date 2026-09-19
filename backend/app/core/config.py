@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Runtime configuration loaded from environment variables or .env."""
 
     app_name: str = "AgentHub"
-    app_version: str = "0.1.0"
+    app_version: str = "0.2.0"
     environment: str = Field(
         default="development",
         validation_alias=AliasChoices("ENVIRONMENT", "APP_ENV"),
@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     minio_bucket: str = "agenthub"
     health_timeout_seconds: float = 3.0
     integration_timeout_seconds: float = 3.0
+    jwt_secret_key: SecretStr = SecretStr("development-only-change-this-secret")
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    max_document_size_bytes: int = 10 * 1024 * 1024
 
     model_config = SettingsConfigDict(
         env_file=".env",

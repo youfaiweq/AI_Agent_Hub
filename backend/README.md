@@ -28,6 +28,19 @@ The API is available at `http://127.0.0.1:8000`.
 - Swagger: `http://127.0.0.1:8000/docs`
 - Health: `http://127.0.0.1:8000/health`
 - System info: `http://127.0.0.1:8000/api/v1/system/info`
+- Register: `POST http://127.0.0.1:8000/api/v1/auth/register`
+- Login: `POST http://127.0.0.1:8000/api/v1/auth/login`
+- Current user: `GET http://127.0.0.1:8000/api/v1/auth/me`
+- Knowledge bases: `GET/POST http://127.0.0.1:8000/api/v1/knowledge-bases`
+- Knowledge base detail: `GET/PATCH/DELETE http://127.0.0.1:8000/api/v1/knowledge-bases/{id}`
+- Documents: `POST/GET http://127.0.0.1:8000/api/v1/knowledge-bases/{id}/documents`
+- Document detail: `GET/DELETE http://127.0.0.1:8000/api/v1/knowledge-bases/{id}/documents/{document_id}`
+
+Authentication uses Argon2 password hashes and JWT access tokens. Configure
+`JWT_SECRET_KEY` through the local `.env` before non-development deployment.
+
+The document slice accepts PDF, TXT, and Markdown uploads and stores original
+objects in MinIO. Parsing and RAG are intentionally deferred to v0.3.
 
 ## Run tests
 

@@ -1,6 +1,7 @@
 """MinIO object-storage connection adapter."""
 
 import asyncio
+from io import BytesIO
 from typing import Protocol, Self
 from urllib.parse import urlparse
 
@@ -16,6 +17,19 @@ class MinioClientProtocol(Protocol):
     def list_buckets(self) -> list[object]: ...
 
     def bucket_exists(self, bucket_name: str) -> bool: ...
+
+    def make_bucket(self, bucket_name: str) -> None: ...
+
+    def put_object(
+        self,
+        bucket_name: str,
+        object_name: str,
+        data: BytesIO,
+        length: int,
+        content_type: str,
+    ) -> object: ...
+
+    def remove_object(self, bucket_name: str, object_name: str) -> None: ...
 
 
 def _parse_endpoint(settings: Settings) -> tuple[str, bool]:
@@ -76,6 +90,57 @@ class MinioAdapter:
             )
         except Exception as exc:
             raise IntegrationError(self.service_name, "bucket_exists") from exc
+
+    async def ensure_bucket(self, bucket_name: str | None = None) -> None:
+        """Create the configured bucket when it does not exist."""
+
+        name = bucket_name or self._settings.minio_bucket
+        try:
+            if not await self.bucket_exists(name):
+                await asyncio.wait_for(
+                    asyncio.to_thread(self._get_client().make_bucket, name),
+                    timeout=self._settings.integration_timeout_seconds,
+                )
+        except Exception as exc:
+            raise IntegrationError(self.service_name, "ensure_bucket") from exc
+
+    async def put_object(
+        self,
+        object_name: str,
+        data: BytesIO,
+        length: int,
+        content_type: str,
+        bucket_name: str | None = None,
+    ) -> None:
+        """Upload one object to the configured bucket."""
+
+        name = bucket_name or self._settings.minio_bucket
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(
+                    self._get_client().put_object,
+                    name,
+                    object_name,
+                    data,
+                    length,
+                    content_type=content_type,
+                ),
+                timeout=self._settings.integration_timeout_seconds,
+            )
+        except Exception as exc:
+            raise IntegrationError(self.service_name, "put_object") from exc
+
+    async def remove_object(self, object_name: str, bucket_name: str | None = None) -> None:
+        """Delete one object from the configured bucket."""
+
+        name = bucket_name or self._settings.minio_bucket
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(self._get_client().remove_object, name, object_name),
+                timeout=self._settings.integration_timeout_seconds,
+            )
+        except Exception as exc:
+            raise IntegrationError(self.service_name, "remove_object") from exc
 
     async def close(self) -> None:
         """Release adapter-owned resources; MinIO's SDK has no close call."""

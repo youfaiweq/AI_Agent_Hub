@@ -31,9 +31,9 @@
 
 当前未完成：
 
-- 无。F0-T6 v0.1 总验收已完成。
+- F1-T3 Document Metadata & Object Storage
 
-下一项为 **F1-T1 Authentication**；未经明确指令不得自动开始。
+下一项为 **F2-T1 Parsing and Chunking Contracts**；未经明确指令不得自动开始。
 
 ---
 
@@ -145,6 +145,8 @@
 
 ## F1-T1 — Authentication
 
+状态：`[x]`
+
 - User Model、Migration、Repository、Service
 - 注册、登录、当前用户
 - Argon2 或项目选定的密码哈希方案
@@ -154,6 +156,8 @@
 
 ## F1-T2 — Knowledge Base CRUD
 
+状态：`[x]`
+
 - KnowledgeBase Model、Migration、Repository、Service、Schema
 - 创建、列表、详情、更新、删除
 - 所有权校验：用户只能访问自己的知识库
@@ -161,6 +165,8 @@
 - API、Service、Repository 测试
 
 ## F1-T3 — Document Metadata & Object Storage
+
+状态：`[x]`
 
 - Document Model、Migration、Repository、Service
 - PDF/TXT/Markdown 文件类型与大小校验
@@ -171,6 +177,8 @@
 
 ## F1-T4 — Knowledge UI
 
+状态：`[x]`
+
 - 登录/注册
 - Dashboard
 - 知识库列表/详情
@@ -178,6 +186,8 @@
 - 统一 API 错误和加载状态
 
 ## F1-T5 — v0.2 Release Gate
+
+状态：`[x]`
 
 用户可以注册、登录、创建知识库、上传文档、查看文档并删除文档；API、数据库 Migration、MinIO 和前端流程均有可重复测试。
 
@@ -379,4 +389,9 @@ Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，�
 **F0-T3 — PostgreSQL Persistence Foundation 已完成。**
 **F0-T4 — Infrastructure Client Adapters 已完成。**
 **F0-T5 — Frontend Shell 已完成。**
-**F0-T6 — v0.1 Release Gate 已完成。** 下一项允许执行 **F1-T1 — Authentication**，但未收到明确开发指令前不要自动开始。
+**F0-T6 — v0.1 Release Gate 已完成。**
+**F1-T1 — Authentication 已完成。**
+**F1-T2 — Knowledge Base CRUD 已完成。**
+**F1-T3 — Document Metadata & Object Storage 已完成。**
+**F1-T4 — Knowledge UI 已完成。**
+**F1-T5 — v0.2 Release Gate 已完成。** 下一项允许执行 **F2-T1 — Parsing and Chunking Contracts**，但未收到明确开发指令前不要自动开始。
