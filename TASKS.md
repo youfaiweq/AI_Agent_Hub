@@ -31,9 +31,9 @@
 
 当前未完成：
 
-- F4-T1 Agent Runtime Contracts 及后续里程碑
+- F4-T5 v0.5 Release Gate 及后续里程碑
 
-下一项为 **F4-T1 Agent Runtime Contracts**；未经明确指令不得自动开始。
+下一项为 **F4-T5 v0.5 Release Gate**；未经明确指令不得自动开始。
 
 ---
 
@@ -327,31 +327,50 @@
 
 ## F4-T1 — Agent Runtime Contracts
 
-- Agent State：messages、user_id、conversation_id、agent_id、knowledge_base_id、tool_calls、tool_results、metadata
-- AgentRun、ToolCallRecord Model 与 Migration
+状态：`[x]`
+
+- `AgentState`：messages、user_id、conversation_id、agent_id、knowledge_base_id、tool_calls、tool_results、metadata
+- AgentRun、ToolCallRecord Model、Repository 与 0008 Migration
 - Max Steps、Timeout、取消、失败状态
-- LangGraph Graph/Node/Conditional Edge
+- LangGraph `START → agent → tool/END` Graph/Node/Conditional Edge
+- AgentStepHandler、ToolExecutor 和 ToolExecutionResult Provider-neutral 契约
+- Agent Runtime unit tests、PostgreSQL persistence integration test
+- 不实现 Tool Registry 或具体 Tool
 
 ## F4-T2 — Tool Registry
 
-- 统一 name、description、input_schema、execute
-- ToolRegistry
-- Tool 错误转换为 Agent 可理解的结构化错误
-- Tool 执行日志与持久化
+状态：`[x]`
+
+- `BaseTool` 统一 `name`、`description`、`input_schema`、`execute`
+- `ToolRegistry` 注册、发现、重复名保护和 F4-T1 `ToolExecutor` 适配
+- JSON object input schema 的 required/type 校验
+- 未注册工具、非法输入、工具异常、超时统一转换为结构化错误
+- Tool 执行日志只记录 tool_name、call_id、状态和耗时，不记录参数/结果
+- ToolCallRecord 创建、running、completed/failed 持久化
+- Tool Registry unit tests 已覆盖
+- 不实现具体业务 Tool
 
 ## F4-T3 — Read-only Tools
 
-- knowledge_search
-- calculator
-- sql_query：只允许 SELECT、SQL AST/语句校验、表白名单、超时、行数限制
-- web_search：Provider Adapter，不把具体 Search Provider 写入 Agent 逻辑
+状态：`[x]`
+
+- `knowledge_search`：复用 Retriever，返回 traceable source chunks
+- `calculator`：AST 白名单求值，不使用 `eval`
+- `sql_query`：仅允许 SELECT，sqlglot AST 校验、表白名单、超时、行数限制、JSON 序列化
+- `web_search`：Provider Adapter 契约和 Tavily-compatible HTTP Adapter
+- 所有工具接入统一 Tool Registry、输入校验、结构化错误和执行审计
+- 单元测试、Provider MockTransport 测试和 PostgreSQL SQL 集成测试已覆盖
 
 ## F4-T4 — Agent API and UI
 
-- Agent 配置、列表、详情
-- Agent Run、Run History
-- 流式输出前先完成非流式可靠版本
-- Tool Call 可视化
+状态：`[x]`
+
+- Agent 配置、列表、详情、更新、删除 API
+- Agent Run API、Run History、Tool Call 记录返回
+- 完成非流式可靠运行版本，使用当前 LLM Provider 和 Tool Registry
+- 前端 Agents 列表、创建、详情、运行和历史页面
+- 所有权校验、max steps、timeout、失败状态和运行持久化已覆盖
+- 不实现流式输出、Memory 或 HITL Approval
 
 ## F4-T5 — v0.5 Release Gate
 
@@ -447,3 +466,7 @@ Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，�
 **F3-T3 — Reranker Adapter 已完成。** 下一项允许执行 **F3-T4 — Retrieval Debug and Evaluation**，但未收到明确开发指令前不要自动开始。
 **F3-T4 — Retrieval Debug and Evaluation 已完成。** 下一项允许执行 **F3-T5 — v0.4 Release Gate**，但未收到明确开发指令前不要自动开始。
 **F3-T5 — v0.4 Release Gate 已完成。** 下一项允许执行 **F4-T1 — Agent Runtime Contracts**，但未收到明确开发指令前不要自动开始。
+**F4-T1 — Agent Runtime Contracts 已完成。** 下一项允许执行 **F4-T2 — Tool Registry**，但未收到明确开发指令前不要自动开始。
+**F4-T2 — Tool Registry 已完成。** 下一项允许执行 **F4-T3 — Read-only Tools**，但未收到明确开发指令前不要自动开始。
+**F4-T3 — Read-only Tools 已完成。** 下一项允许执行 **F4-T4 — Agent API and UI**，但未收到明确开发指令前不要自动开始。
+**F4-T4 — Agent API and UI 已完成。** 下一项允许执行 **F4-T5 — v0.5 Release Gate**，但未收到明确开发指令前不要自动开始。

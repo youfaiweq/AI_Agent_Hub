@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import AppLayout from '@/layouts/AppLayout.vue'
+import AgentDetailView from '@/views/AgentDetailView.vue'
+import AgentsView from '@/views/AgentsView.vue'
 import DashboardView from '@/views/DashboardView.vue'
 import KnowledgeBaseDetailView from '@/views/KnowledgeBaseDetailView.vue'
 import KnowledgeBasesView from '@/views/KnowledgeBasesView.vue'
@@ -37,6 +39,18 @@ const router = createRouter({
           name: 'knowledge-base-detail',
           component: KnowledgeBaseDetailView,
           meta: { title: 'Knowledge Base', requiresAuth: true },
+        },
+        {
+          path: 'agents',
+          name: 'agents',
+          component: AgentsView,
+          meta: { title: 'Agents', requiresAuth: true },
+        },
+        {
+          path: 'agents/:id',
+          name: 'agent-detail',
+          component: AgentDetailView,
+          meta: { title: 'Agent', requiresAuth: true },
         },
       ],
     },

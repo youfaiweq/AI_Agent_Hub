@@ -37,6 +37,10 @@ function logout(): void {
           <span class="nav-indicator" />
           Knowledge bases
         </RouterLink>
+        <RouterLink to="/agents" class="side-nav-item" active-class="is-active">
+          <span class="nav-indicator" />
+          Agents
+        </RouterLink>
       </nav>
 
       <div class="sidebar-footer">

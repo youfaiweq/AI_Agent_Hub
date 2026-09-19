@@ -36,7 +36,8 @@ class ChatService:
         self.conversations = ConversationRepository(session)
         self.messages = MessageRepository(session)
         self.knowledge_bases = KnowledgeBaseRepository(session)
-        self.context_builder = ContextBuilder()
+        self.settings = get_settings()
+        self.context_builder = ContextBuilder(token_budget=self.settings.chat_context_token_budget)
 
     async def create_conversation(self, user_id: UUID, payload: ConversationCreate) -> ConversationResponse:
         knowledge_base = await self.knowledge_bases.get_owned(payload.knowledge_base_id, user_id)
@@ -79,8 +80,8 @@ class ChatService:
             retrieved = await self.retriever.retrieve(
                 conversation.knowledge_base_id,
                 message,
-                top_k=5,
-                score_threshold=get_settings().retrieval_score_threshold,
+                top_k=self.settings.chat_retrieval_top_k,
+                score_threshold=self.settings.retrieval_score_threshold,
             )
         except Exception as exc:
             raise AppError("RETRIEVAL_FAILED", "Knowledge retrieval failed", 502) from exc
@@ -90,7 +91,10 @@ class ChatService:
         if not citations:
             answer = NO_CONTEXT_ANSWER
         else:
-            history = await self.messages.list_for_conversation(conversation.id)
+            history = await self.messages.list_for_conversation(
+                conversation.id,
+                limit=self.settings.chat_history_max_messages,
+            )
             prompt = f"Knowledge-base context:\n{context.text}\n\nUser question:\n{message}"
             llm_messages = [LLMMessage(role="system", content=SYSTEM_PROMPT)]
             llm_messages.extend(

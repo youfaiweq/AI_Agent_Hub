@@ -46,6 +46,23 @@ class Settings(BaseSettings):
     reranker_timeout_seconds: float = 10.0
     reranker_fallback_enabled: bool = False
     reranker_top_k: int = 5
+    agent_max_steps: int = 10
+    agent_timeout_seconds: float = 30.0
+    agent_router_model: str = "qwen-flash"
+    agent_history_max_messages: int = 8
+    agent_tool_results_max: int = 4
+    tool_timeout_seconds: float = 30.0
+    chat_history_max_messages: int = 8
+    chat_context_token_budget: int = 2000
+    chat_retrieval_top_k: int = 5
+    sql_allowed_tables: list[str] = Field(default_factory=list)
+    sql_timeout_seconds: float = 5.0
+    sql_row_limit: int = 100
+    web_search_provider: str = "tavily"
+    web_search_base_url: str = "https://api.tavily.com"
+    web_search_api_key: SecretStr = SecretStr("")
+    web_search_timeout_seconds: float = 10.0
+    web_search_max_results: int = 5
     minio_endpoint: str = "http://localhost:9000"
     minio_access_key: str = "agenthub"
     minio_secret_key: str = "agenthub-secret"

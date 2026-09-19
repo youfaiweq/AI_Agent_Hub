@@ -60,8 +60,20 @@ Configure `LLM_API_KEY` and `RERANKER_API_KEY` before using real external
 Providers. F3-T4 adds authenticated Retrieval Debug endpoints for dense,
 sparse, hybrid, and rerank inspection, plus versioned request-scoped
 Evaluation Dataset metrics for initial retrieval recall and citation correctness.
-The v0.4 release gate has been verified; the next Agent milestone remains
-deferred.
+The v0.4 release gate has been verified. F4-T1 adds LangGraph Agent Runtime
+state/contracts, AgentRun and
+ToolCallRecord persistence, and bounded max-step, timeout, and cancellation
+controls. F4-T2 adds the provider-neutral Tool Registry with input validation,
+structured errors, timeouts, execution logging, and ToolCallRecord
+persistence. F4-T3 adds `knowledge_search`, AST-safe `calculator`, whitelisted
+read-only `sql_query`, and Provider-adapted `web_search`. F4-T4 adds Agent
+configuration CRUD, non-streaming Agent runs, run history, and Tool Call
+records. Streaming, Memory, and HITL remain deferred.
+The default two-level model setup uses `AGENT_ROUTER_MODEL=qwen-flash` for
+tool selection and `LLM_MODEL=qwen-plus`/Agent model configuration for final
+answers. `CHAT_HISTORY_MAX_MESSAGES`, `CHAT_CONTEXT_TOKEN_BUDGET`,
+`AGENT_HISTORY_MAX_MESSAGES`, and `AGENT_TOOL_RESULTS_MAX` bound repeated
+context tokens.
 
 ## Run tests
 

@@ -4,8 +4,9 @@ AgentHub is an enterprise AI knowledge and task-agent platform. The current
 slice covers authentication, user-owned knowledge bases, document ingestion,
 dense retrieval, sparse retrieval, RRF-based hybrid retrieval, and
 citation-grounded chat. Reranking is available through a configured external
-Provider; Agents and later capabilities remain scheduled for subsequent
-milestones.
+Provider, the Agent Runtime, Tool Registry, initial read-only tools, and the
+first non-streaming Agent API/UI are now in place. Memory and HITL remain
+scheduled for subsequent milestones.
 
 ## Requirements
 
@@ -76,7 +77,17 @@ Reranker Adapter with timeout handling and explicit passthrough fallback. Set
 `LLM_API_KEY` and `RERANKER_API_KEY` before using real external Providers.
 F3-T4 adds Retrieval Debug API/UI and request-scoped versioned Evaluation
 Datasets with initial Retrieval Recall and Citation Correctness metrics; the
-F3-T5 v0.4 release gate is complete. The next Agent milestone remains deferred.
+F3-T5 v0.4 release gate is complete.
+F4-T1 adds bounded LangGraph Agent Runtime contracts, AgentRun/ToolCallRecord
+persistence, and max-step/timeout/cancellation controls. F4-T2 adds the
+provider-neutral Tool Registry with input validation, structured errors,
+timeouts, logging, and ToolCallRecord persistence. Concrete tools remain
+F4-T3 adds knowledge search, AST-safe calculator, whitelisted read-only SQL,
+and a provider-adapted web search tool. F4-T4 adds Agent configuration, runs,
+run history, Tool Call records, and a non-streaming Agents UI. Memory and HITL
+remain deferred. Agent routing defaults to `qwen-flash`, while final Chat and
+Agent answers default to `qwen-plus`; Chat/Agent history and retrieval context
+are bounded by environment-configured limits.
 
 ## Start frontend
 

@@ -306,6 +306,37 @@ a {
   max-width: 540px;
 }
 
+.tool-tag {
+  margin-right: 5px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.run-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.agent-run-card {
+  margin-bottom: 22px;
+}
+
+.agent-answer {
+  margin-top: 8px;
+  color: #376f51;
+  white-space: pre-wrap;
+}
+
+.agent-error {
+  margin-top: 8px;
+  color: #b54747;
+}
+
 .retrieval-table {
   --el-table-border-color: #edf0f5;
   --el-table-header-bg-color: #fafbfe;
@@ -587,6 +618,10 @@ a {
   .retrieval-controls {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 
   .retrieval-query,

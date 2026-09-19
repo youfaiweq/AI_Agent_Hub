@@ -34,7 +34,8 @@ RAG 必须拆分 Parser、Cleaner、Chunker、Embedding、VectorStore、Retrieve
 当前为 AgentHub v0.4 Advanced Retrieval：v0.3 Naive RAG、Sparse Retrieval、
 RRF-based Hybrid Retrieval、Reranker Adapter、Retrieval Debug 和初始
 Evaluation 及 v0.4 Release Gate 已完成。Agent、LangGraph、Memory、
-Human-in-the-loop 与 Langfuse 仍必须严格按 TASKS.md 的当前 Task 执行，不得
+F4-T1 Agent Runtime Contracts、F4-T2 Tool Registry、F4-T3 初始只读 Tool 和 F4-T4
+非流式 Agent API/UI 已完成；Memory、Human-in-the-loop 与 Langfuse 仍必须严格按 TASKS.md 的当前 Task 执行，不得
 提前实现。首次进入项目时不要立即生成代码，先阅读四份项目文件、查看仓库
 目录和代码、判断任务完成情况、输出项目状态与实施方案，再执行当前 Task。
 

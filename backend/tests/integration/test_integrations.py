@@ -9,6 +9,7 @@ from app.core.database import dispose_engine, get_engine, get_session_factory
 from app.integrations.minio import MinioAdapter
 from app.integrations.qdrant import QdrantAdapter
 from app.integrations.redis import RedisAdapter
+from app.models.agent import AgentRunStatus, ToolCallStatus
 from app.models.document import Document, DocumentStatus
 from app.models.document_chunk import DocumentChunk
 from app.models.knowledge_base import KnowledgeBase
@@ -20,6 +21,9 @@ from app.rag.retrievers.dense import DenseRetriever
 from app.rag.retrievers.hybrid import HybridRetriever
 from app.rag.retrievers.sparse import SparseRetriever
 from app.rag.vectorstores.qdrant import QdrantVectorStore
+from app.repositories.agent_runs import AgentRunRepository, ToolCallRepository
+from app.tools.registry import ToolContext
+from app.tools.sql import SqlQueryTool
 
 
 @pytest.mark.integration
@@ -211,6 +215,92 @@ async def test_dense_sparse_hybrid_release_gate_round_trip() -> None:
                 assert hybrid_results[0].dense_score is not None
                 assert hybrid_results[0].sparse_score is not None
                 await vector_store.delete_document(knowledge_base_id, document_id)
+        finally:
+            await session.execute(delete(User).where(User.id == user_id))
+            await session.commit()
+    await dispose_engine()
+    get_engine.cache_clear()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_agent_runtime_records_persist_and_update() -> None:
+    user_id = uuid4()
+    agent_id = uuid4()
+    async with get_session_factory()() as session:
+        try:
+            session.add(
+                User(
+                    id=user_id,
+                    email=f"agent-runtime-{user_id}@example.com",
+                    password_hash="test-only",
+                )
+            )
+            await session.flush()
+            runs = AgentRunRepository(session)
+            tool_calls = ToolCallRepository(session)
+            run = await runs.create(
+                user_id=user_id,
+                agent_id=agent_id,
+                input_text="Run the runtime contract",
+                max_steps=3,
+                timeout_seconds=5,
+                state={"status": "pending", "step_count": 0},
+            )
+            await runs.update_state(
+                run,
+                status=AgentRunStatus.RUNNING,
+                state={"status": "running", "step_count": 1},
+                step_count=1,
+            )
+            record = await tool_calls.create(
+                agent_run_id=run.id,
+                call_id="call-1",
+                tool_name="contract-test",
+                arguments={"value": 1},
+            )
+            await tool_calls.update_status(
+                record,
+                status=ToolCallStatus.COMPLETED,
+                result={"value": 2},
+                duration_ms=1.5,
+            )
+            await runs.update_state(
+                run,
+                status=AgentRunStatus.COMPLETED,
+                state={"status": "completed", "step_count": 1},
+                step_count=1,
+            )
+            await session.commit()
+
+            loaded = await runs.get_owned(run.id, user_id)
+            assert loaded is not None
+            assert loaded.status == AgentRunStatus.COMPLETED
+            assert loaded.step_count == 1
+            assert record.status == ToolCallStatus.COMPLETED
+            assert record.result == {"value": 2}
+        finally:
+            await session.execute(delete(User).where(User.id == user_id))
+            await session.commit()
+    await dispose_engine()
+    get_engine.cache_clear()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_sql_query_tool_runs_whitelisted_select_against_postgresql() -> None:
+    user_id = uuid4()
+    email = f"sql-tool-{user_id}@example.com"
+    async with get_session_factory()() as session:
+        try:
+            session.add(User(id=user_id, email=email, password_hash="test-only"))
+            await session.flush()
+            tool = SqlQueryTool(session, allowed_tables={"users"}, row_limit=1)
+            result = await tool.execute(
+                {"query": f"SELECT email FROM users WHERE id = '{user_id}'"},
+                ToolContext(user_id, None, uuid4(), None, {}),
+            )
+            assert result["rows"] == [{"email": email}]
         finally:
             await session.execute(delete(User).where(User.id == user_id))
             await session.commit()
