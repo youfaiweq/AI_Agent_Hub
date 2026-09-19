@@ -87,6 +87,21 @@ async def test_document_upload_metadata_ownership_and_delete() -> None:
             assert document["size_bytes"] == 11
             assert document["status"] == "uploaded"
 
+            processed = await client.post(
+                f"/api/v1/knowledge-bases/{knowledge_base_id}/documents/{document_id}/process",
+                headers=owner_headers,
+            )
+            assert processed.status_code == 200
+            assert processed.json()["document"]["status"] == "completed"
+            assert processed.json()["chunk_count"] >= 1
+
+            processed_again = await client.post(
+                f"/api/v1/knowledge-bases/{knowledge_base_id}/documents/{document_id}/process",
+                headers=owner_headers,
+            )
+            assert processed_again.status_code == 200
+            assert processed_again.json()["chunk_count"] == processed.json()["chunk_count"]
+
             listed = await client.get(
                 f"/api/v1/knowledge-bases/{knowledge_base_id}/documents",
                 headers=owner_headers,
@@ -94,6 +109,7 @@ async def test_document_upload_metadata_ownership_and_delete() -> None:
             assert listed.status_code == 200
             assert listed.json()["total"] == 1
             assert listed.json()["items"][0]["id"] == document_id
+            assert listed.json()["items"][0]["status"] == "completed"
 
             forbidden = await client.get(
                 f"/api/v1/knowledge-bases/{knowledge_base_id}/documents/{document_id}",
@@ -113,6 +129,35 @@ async def test_document_upload_metadata_ownership_and_delete() -> None:
                 headers=owner_headers,
             )
             assert missing.status_code == 404
+
+            broken = await client.post(
+                f"/api/v1/knowledge-bases/{knowledge_base_id}/documents",
+                headers=owner_headers,
+                files={"file": ("broken.pdf", b"not a PDF", "application/pdf")},
+            )
+            assert broken.status_code == 201
+            broken_id = broken.json()["id"]
+            storage_keys.append(broken.json()["storage_key"])
+
+            failed_process = await client.post(
+                f"/api/v1/knowledge-bases/{knowledge_base_id}/documents/{broken_id}/process",
+                headers=owner_headers,
+            )
+            assert failed_process.status_code == 422
+            failed_detail = await client.get(
+                f"/api/v1/knowledge-bases/{knowledge_base_id}/documents/{broken_id}",
+                headers=owner_headers,
+            )
+            assert failed_detail.status_code == 200
+            assert failed_detail.json()["status"] == "failed"
+            assert failed_detail.json()["failure_reason"].startswith("INVALID_PDF:")
+
+            deleted_broken = await client.delete(
+                f"/api/v1/knowledge-bases/{knowledge_base_id}/documents/{broken_id}",
+                headers=owner_headers,
+            )
+            assert deleted_broken.status_code == 204
+            storage_keys.clear()
     finally:
         app.dependency_overrides.pop(get_db_session, None)
         await cleanup()

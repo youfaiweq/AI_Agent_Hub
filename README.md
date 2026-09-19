@@ -60,7 +60,13 @@ Set `JWT_SECRET_KEY` in the local `.env` before any non-development deployment.
 
 The current document slice accepts PDF, TXT, and Markdown uploads, stores the
 original object in MinIO, and persists only metadata plus `storage_key` in
-PostgreSQL. Parsing and RAG are deferred to v0.3.
+PostgreSQL. F2-T1 adds page-aware Parser, Cleaner, and Chunker contracts;
+F2-T2 adds synchronous ingestion, idempotent processing, and failure tracking;
+F2-T3 adds the EmbeddingProvider contract and Qdrant vector storage adapter;
+F2-T4 adds dense retrieval, token-budgeted context, and citations; LLM-backed
+F2-T5 adds Conversation/Message persistence and an OpenAI-compatible Chat API.
+Chat endpoints are under `/api/v1/conversations`. Set `LLM_API_KEY` before
+using a real model; full production RAG evaluation remains deferred.
 
 ## Start frontend
 

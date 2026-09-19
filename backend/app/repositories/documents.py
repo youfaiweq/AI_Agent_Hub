@@ -29,6 +29,23 @@ class DocumentRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_owned_for_update(
+        self,
+        document_id: UUID,
+        user_id: UUID,
+        knowledge_base_id: UUID,
+    ) -> Document | None:
+        result = await self.session.execute(
+            select(Document)
+            .where(
+                Document.id == document_id,
+                Document.user_id == user_id,
+                Document.knowledge_base_id == knowledge_base_id,
+            )
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def count_owned(self, user_id: UUID, knowledge_base_id: UUID) -> int:
         result = await self.session.execute(
             select(func.count())

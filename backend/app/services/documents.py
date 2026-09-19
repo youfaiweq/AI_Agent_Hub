@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.integrations.minio import MinioAdapter
 from app.models.document import Document, DocumentStatus
+from app.rag.vectorstores.qdrant import QdrantVectorStore
 from app.repositories.documents import DocumentRepository
 from app.repositories.knowledge_bases import KnowledgeBaseRepository
 from app.schemas.document import DocumentListResponse, DocumentResponse
@@ -28,9 +29,15 @@ ALLOWED_EXTENSIONS: dict[str, str] = {
 class DocumentService:
     """Coordinate document validation, metadata, and object storage."""
 
-    def __init__(self, session: AsyncSession, storage: MinioAdapter) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        storage: MinioAdapter,
+        vector_store: QdrantVectorStore,
+    ) -> None:
         self.session = session
         self.storage = storage
+        self.vector_store = vector_store
         self.documents = DocumentRepository(session)
         self.knowledge_bases = KnowledgeBaseRepository(session)
 
@@ -149,6 +156,7 @@ class DocumentService:
     async def delete(self, user_id: UUID, knowledge_base_id: UUID, document_id: UUID) -> None:
         document = await self.get(user_id, knowledge_base_id, document_id)
         try:
+            await self.vector_store.delete_document(knowledge_base_id, document.id)
             await self.storage.remove_object(document.storage_key)
         except Exception as exc:
             raise AppError("DOCUMENT_STORAGE_DELETE_FAILED", "Document deletion failed", 502) from exc

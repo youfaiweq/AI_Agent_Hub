@@ -20,6 +20,7 @@ class DocumentResponse(BaseModel):
     size_bytes: int
     storage_key: str
     status: DocumentStatusValue
+    chunk_count: int
     failure_reason: str | None
     created_at: datetime
     updated_at: datetime
@@ -30,3 +31,8 @@ class DocumentListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class DocumentProcessingResponse(BaseModel):
+    document: DocumentResponse
+    chunk_count: int

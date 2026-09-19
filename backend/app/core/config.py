@@ -28,6 +28,17 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://agenthub:agenthub@localhost:55432/agenthub"
     redis_url: str = "redis://localhost:6379/0"
     qdrant_url: str = "http://localhost:6333"
+    qdrant_collection_prefix: str = "agenthub_kb"
+    embedding_provider: str = "hash"
+    embedding_model_name: str = "hash-v1"
+    embedding_dimension: int = 384
+    retrieval_score_threshold: float = 0.2
+    llm_provider: str = "openai_compatible"
+    llm_base_url: str = "https://api.openai.com/v1"
+    llm_api_key: SecretStr = SecretStr("")
+    llm_model: str = "gpt-4o-mini"
+    llm_timeout_seconds: float = 30.0
+    llm_temperature: float = 0.2
     minio_endpoint: str = "http://localhost:9000"
     minio_access_key: str = "agenthub"
     minio_secret_key: str = "agenthub-secret"

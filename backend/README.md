@@ -35,12 +35,22 @@ The API is available at `http://127.0.0.1:8000`.
 - Knowledge base detail: `GET/PATCH/DELETE http://127.0.0.1:8000/api/v1/knowledge-bases/{id}`
 - Documents: `POST/GET http://127.0.0.1:8000/api/v1/knowledge-bases/{id}/documents`
 - Document detail: `GET/DELETE http://127.0.0.1:8000/api/v1/knowledge-bases/{id}/documents/{document_id}`
+- Process document: `POST http://127.0.0.1:8000/api/v1/knowledge-bases/{id}/documents/{document_id}/process`
 
 Authentication uses Argon2 password hashes and JWT access tokens. Configure
 `JWT_SECRET_KEY` through the local `.env` before non-development deployment.
 
 The document slice accepts PDF, TXT, and Markdown uploads and stores original
-objects in MinIO. Parsing and RAG are intentionally deferred to v0.3.
+objects in MinIO. F2-T1 provides page-aware Parser, Cleaner, and Chunker
+contracts with TXT, Markdown, and PDF implementations. F2-T2 adds synchronous
+ingestion, idempotent status transitions, failure persistence, and chunk-count
+metadata. F2-T3 adds the EmbeddingProvider contract, an explicit local hash
+baseline, and Qdrant upsert/search/delete adapters; retrieval orchestration
+and semantic provider quality remain deferred. F2-T4 adds DenseRetriever,
+token-budgeted ContextBuilder, and traceable Citation output. F2-T5 adds
+Conversation/Message persistence, an OpenAI-compatible LLM adapter, and the
+retrieval-grounded Chat API. Conversation endpoints are under
+`/api/v1/conversations`; configure `LLM_API_KEY` before using a real model.
 
 ## Run tests
 

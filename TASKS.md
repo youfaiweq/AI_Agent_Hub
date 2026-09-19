@@ -31,9 +31,9 @@
 
 当前未完成：
 
-- F1-T3 Document Metadata & Object Storage
+- F2-T3 Embedding and Vector Store
 
-下一项为 **F2-T1 Parsing and Chunking Contracts**；未经明确指令不得自动开始。
+下一项为 **F3-T1 Sparse Retrieval**；未经明确指令不得自动开始。
 
 ---
 
@@ -199,6 +199,8 @@
 
 ## F2-T1 — Parsing and Chunking Contracts
 
+状态：`[x]`
+
 - `Parser`、`Cleaner`、`Chunker` 接口
 - TXT、Markdown、PDF Parser
 - 统一 ParsedDocument、Chunk、ChunkMetadata 类型
@@ -206,6 +208,8 @@
 - Parser/Chunker 单元测试和异常文件测试
 
 ## F2-T2 — Ingestion Pipeline
+
+状态：`[x]`
 
 - Document 状态流转：uploaded → processing → completed/failed
 - 解析、清理、分块 Pipeline
@@ -217,6 +221,8 @@
 
 ## F2-T3 — Embedding and Vector Store
 
+状态：`[x]`
+
 - EmbeddingProvider Adapter
 - Qdrant VectorStore Adapter
 - Collection 命名、向量维度配置和 payload schema
@@ -226,12 +232,16 @@
 
 ## F2-T4 — Dense Retrieval and Context
 
+状态：`[x]`
+
 - DenseRetriever
 - Top-K、相似度阈值、去重
 - ContextBuilder 与 Token Budget
 - Citation 结构：document_id、filename、chunk_id、page_number、snippet
 
 ## F2-T5 — LLM Provider and Chat
+
+状态：`[x]`
 
 - LLMProvider Adapter
 - Conversation、Message Model 与 Migration
@@ -240,6 +250,8 @@
 - LLM 错误、超时、空回答测试
 
 ## F2-T6 — v0.3 Release Gate
+
+状态：`[x]`
 
 上传至少一份真实 PDF/TXT/Markdown 后，可以通过 API/UI 提问并获得基于检索上下文的答案与 Citation。检索结果和引用可追溯到原文 Chunk。
 
@@ -394,4 +406,10 @@ Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，�
 **F1-T2 — Knowledge Base CRUD 已完成。**
 **F1-T3 — Document Metadata & Object Storage 已完成。**
 **F1-T4 — Knowledge UI 已完成。**
-**F1-T5 — v0.2 Release Gate 已完成。** 下一项允许执行 **F2-T1 — Parsing and Chunking Contracts**，但未收到明确开发指令前不要自动开始。
+**F1-T5 — v0.2 Release Gate 已完成。**
+**F2-T1 — Parsing and Chunking Contracts 已完成。**
+**F2-T2 — Ingestion Pipeline 已完成。**
+**F2-T3 — Embedding and Vector Store 已完成。**
+**F2-T4 — Dense Retrieval and Context 已完成。**
+**F2-T5 — LLM Provider and Chat 已完成。**
+**F2-T6 — v0.3 Release Gate 已完成。** 下一项允许执行 **F3-T1 — Sparse Retrieval**，但未收到明确开发指令前不要自动开始。

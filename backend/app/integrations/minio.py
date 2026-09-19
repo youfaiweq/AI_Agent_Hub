@@ -31,6 +31,18 @@ class MinioClientProtocol(Protocol):
 
     def remove_object(self, bucket_name: str, object_name: str) -> None: ...
 
+    def get_object(self, bucket_name: str, object_name: str) -> "MinioObjectResponseProtocol": ...
+
+
+class MinioObjectResponseProtocol(Protocol):
+    """Minimal response surface returned by MinIO object reads."""
+
+    def read(self) -> bytes: ...
+
+    def close(self) -> None: ...
+
+    def release_conn(self) -> None: ...
+
 
 def _parse_endpoint(settings: Settings) -> tuple[str, bool]:
     """Convert the configured URL into the MinIO SDK endpoint format."""
@@ -141,6 +153,27 @@ class MinioAdapter:
             )
         except Exception as exc:
             raise IntegrationError(self.service_name, "remove_object") from exc
+
+    async def get_object_bytes(self, object_name: str, bucket_name: str | None = None) -> bytes:
+        """Read one object fully and release the MinIO response connection."""
+
+        name = bucket_name or self._settings.minio_bucket
+
+        def read_object() -> bytes:
+            response = self._get_client().get_object(name, object_name)
+            try:
+                return response.read()
+            finally:
+                response.close()
+                response.release_conn()
+
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(read_object),
+                timeout=self._settings.integration_timeout_seconds,
+            )
+        except Exception as exc:
+            raise IntegrationError(self.service_name, "get_object") from exc
 
     async def close(self) -> None:
         """Release adapter-owned resources; MinIO's SDK has no close call."""

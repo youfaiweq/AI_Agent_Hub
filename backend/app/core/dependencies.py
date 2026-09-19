@@ -8,11 +8,14 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db_session
 from app.core.exceptions import AppError
 from app.core.security import decode_access_token
 from app.integrations.minio import MinioAdapter
 from app.models.user import User
+from app.rag.embeddings import EmbeddingProvider, HashEmbeddingProvider
+from app.rag.vectorstores.qdrant import QdrantVectorStore
 from app.services.auth import AuthService
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -52,3 +55,24 @@ async def get_minio_adapter() -> AsyncIterator[MinioAdapter]:
 
 
 StorageDependency = Annotated[MinioAdapter, Depends(get_minio_adapter)]
+
+
+def get_embedding_provider() -> EmbeddingProvider:
+    settings = get_settings()
+    if settings.embedding_provider != "hash":
+        raise RuntimeError(f"Unsupported embedding provider: {settings.embedding_provider}")
+    return HashEmbeddingProvider(
+        dimension=settings.embedding_dimension,
+        model_name=settings.embedding_model_name,
+    )
+
+
+EmbeddingDependency = Annotated[EmbeddingProvider, Depends(get_embedding_provider)]
+
+
+async def get_vector_store() -> AsyncIterator[QdrantVectorStore]:
+    async with QdrantVectorStore() as store:
+        yield store
+
+
+VectorStoreDependency = Annotated[QdrantVectorStore, Depends(get_vector_store)]

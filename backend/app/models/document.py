@@ -38,4 +38,5 @@ class Document(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     storage_key: Mapped[str] = mapped_column(String(512), unique=True, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=DocumentStatus.PROCESSING)
+    chunk_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
