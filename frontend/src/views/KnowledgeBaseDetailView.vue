@@ -4,8 +4,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { getApiErrorMessage } from '@/api/http'
+import { debugRetrieval } from '@/api/retrieval'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import type { DocumentItem } from '@/types/knowledge'
+import type {
+  RetrievalDebugResponse,
+  RetrievalMode,
+} from '@/types/retrieval'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,6 +18,13 @@ const store = useKnowledgeStore()
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const pageError = ref<string | null>(null)
+const retrievalQuery = ref('')
+const retrievalMode = ref<RetrievalMode>('hybrid')
+const retrievalTopK = ref(5)
+const retrievalCandidateK = ref(20)
+const retrievalLoading = ref(false)
+const retrievalError = ref<string | null>(null)
+const retrievalResult = ref<RetrievalDebugResponse | null>(null)
 const knowledgeBaseId = computed(() => String(route.params.id))
 const allowedExtensions = ['.pdf', '.txt', '.md', '.markdown']
 
@@ -67,6 +79,31 @@ function statusType(status: DocumentItem['status']): 'success' | 'warning' | 'da
   if (status === 'uploaded' || status === 'completed') return 'success'
   if (status === 'failed') return 'danger'
   return 'warning'
+}
+
+function formatScore(score: number | null): string {
+  return score === null ? '—' : score.toFixed(4)
+}
+
+async function runRetrievalDebug(): Promise<void> {
+  if (!retrievalQuery.value.trim()) {
+    retrievalError.value = 'Enter a question to inspect retrieval.'
+    return
+  }
+  retrievalLoading.value = true
+  retrievalError.value = null
+  try {
+    retrievalResult.value = await debugRetrieval(knowledgeBaseId.value, {
+      query: retrievalQuery.value,
+      mode: retrievalMode.value,
+      top_k: retrievalTopK.value,
+      candidate_k: Math.max(retrievalCandidateK.value, retrievalTopK.value),
+    })
+  } catch (error) {
+    retrievalError.value = getApiErrorMessage(error, 'Unable to inspect retrieval.')
+  } finally {
+    retrievalLoading.value = false
+  }
 }
 
 onMounted(async () => {
@@ -128,6 +165,57 @@ onMounted(async () => {
           <template #default="{ row }">
             <el-button link type="danger" @click="removeDocument(row)">Delete</el-button>
           </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <el-card shadow="never" class="content-card retrieval-card">
+      <div class="section-heading compact-heading">
+        <div>
+          <p class="page-eyebrow">Retrieval debug</p>
+          <h3>Inspect ranked chunks</h3>
+        </div>
+        <span class="table-secondary">Scores are adapter outputs, not answer quality.</span>
+      </div>
+      <div class="retrieval-controls">
+        <el-input
+          v-model="retrievalQuery"
+          class="retrieval-query"
+          clearable
+          placeholder="Ask a question about this knowledge base"
+          @keyup.enter="runRetrievalDebug"
+        />
+        <el-select v-model="retrievalMode" class="retrieval-mode" aria-label="Retrieval mode">
+          <el-option label="Hybrid + RRF" value="hybrid" />
+          <el-option label="Dense" value="dense" />
+          <el-option label="Sparse" value="sparse" />
+          <el-option label="Hybrid + Rerank" value="rerank" />
+        </el-select>
+        <el-input-number v-model="retrievalTopK" :min="1" :max="50" controls-position="right" />
+        <el-input-number v-model="retrievalCandidateK" :min="1" :max="200" controls-position="right" />
+        <el-button type="primary" :loading="retrievalLoading" @click="runRetrievalDebug">Run test</el-button>
+      </div>
+      <el-alert v-if="retrievalError" :title="retrievalError" type="error" show-icon class="dialog-alert" />
+      <el-empty v-else-if="retrievalResult && retrievalResult.items.length === 0" description="No matching chunks" />
+      <el-table v-else-if="retrievalResult" :data="retrievalResult.items" class="retrieval-table">
+        <el-table-column prop="final_rank" label="#" width="60" />
+        <el-table-column label="Chunk" min-width="260">
+          <template #default="{ row }">
+            <div class="table-primary">{{ row.filename }} · p.{{ row.page_number }}</div>
+            <div class="table-secondary retrieval-snippet">{{ row.snippet }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="Dense" width="95">
+          <template #default="{ row }">{{ formatScore(row.dense_score) }}</template>
+        </el-table-column>
+        <el-table-column label="Sparse" width="95">
+          <template #default="{ row }">{{ formatScore(row.sparse_score) }}</template>
+        </el-table-column>
+        <el-table-column label="Fusion" width="95">
+          <template #default="{ row }">{{ formatScore(row.fusion_score) }}</template>
+        </el-table-column>
+        <el-table-column label="Rerank" width="95">
+          <template #default="{ row }">{{ formatScore(row.rerank_score) }}</template>
         </el-table-column>
       </el-table>
     </el-card>

@@ -15,6 +15,7 @@ from app.core.security import decode_access_token
 from app.integrations.minio import MinioAdapter
 from app.models.user import User
 from app.rag.embeddings import EmbeddingProvider, HashEmbeddingProvider
+from app.rag.rerankers import BaseReranker, create_reranker
 from app.rag.vectorstores.qdrant import QdrantVectorStore
 from app.services.auth import AuthService
 
@@ -76,3 +77,10 @@ async def get_vector_store() -> AsyncIterator[QdrantVectorStore]:
 
 
 VectorStoreDependency = Annotated[QdrantVectorStore, Depends(get_vector_store)]
+
+
+def get_reranker() -> BaseReranker:
+    return create_reranker()
+
+
+RerankerDependency = Annotated[BaseReranker, Depends(get_reranker)]

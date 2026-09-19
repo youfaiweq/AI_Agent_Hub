@@ -31,6 +31,11 @@ RAG 必须拆分 Parser、Cleaner、Chunker、Embedding、VectorStore、Retrieve
 
 ## 5. 当前项目状态
 
-当前为 AgentHub v0.1，只允许基础工程建设。禁止 RAG、Agent、LangGraph、Embedding、Memory、Hybrid Search、Reranker。首次进入项目时不要立即生成代码，先阅读四份项目文件、查看仓库目录和代码、判断任务完成情况、输出项目状态与实施方案，再执行当前 Task。
+当前为 AgentHub v0.4 Advanced Retrieval：v0.3 Naive RAG、Sparse Retrieval、
+RRF-based Hybrid Retrieval、Reranker Adapter、Retrieval Debug 和初始
+Evaluation 及 v0.4 Release Gate 已完成。Agent、LangGraph、Memory、
+Human-in-the-loop 与 Langfuse 仍必须严格按 TASKS.md 的当前 Task 执行，不得
+提前实现。首次进入项目时不要立即生成代码，先阅读四份项目文件、查看仓库
+目录和代码、判断任务完成情况、输出项目状态与实施方案，再执行当前 Task。
 
 最终原则：AgentHub 的价值在于把 LLM + RAG + Agent 做成可靠的软件工程系统，而不是展示使用了多少框架。

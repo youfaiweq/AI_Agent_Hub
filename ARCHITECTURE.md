@@ -93,4 +93,7 @@ API 前缀统一为 `/api/v1`，返回尽量统一为 `{ "data": {}, "message": 
 
 ## 10. 当前限制
 
-当前仅执行 v0.1 基础工程建设，禁止提前实现 Auth、Document Parser、Embedding、RAG、LangGraph、Agent、Memory、Langfuse、Hybrid Search 与 Reranker。优先级为：正确性 > 可维护性 > 可测试性 > 可观测性 > 性能优化 > 技术炫技。
+当前已完成 v0.3 Naive RAG、Sparse Retrieval、RRF-based Hybrid Retrieval 和
+Reranker Adapter、Retrieval Debug、初始 Evaluation 和 v0.4 Release Gate；
+LangGraph Agent、Memory 和 Langfuse 仍按任务路线后续实现。优先级为：正确性
+> 可维护性 > 可测试性 > 可观测性 > 性能优化 > 技术炫技。

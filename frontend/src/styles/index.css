@@ -283,6 +283,34 @@ a {
   vertical-align: middle;
 }
 
+.retrieval-card {
+  margin-top: 22px;
+}
+
+.retrieval-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.retrieval-query {
+  flex: 1 1 auto;
+}
+
+.retrieval-mode {
+  width: 170px;
+}
+
+.retrieval-snippet {
+  max-width: 540px;
+}
+
+.retrieval-table {
+  --el-table-border-color: #edf0f5;
+  --el-table-header-bg-color: #fafbfe;
+}
+
 .auth-page {
   display: grid;
   min-height: 100vh;
@@ -554,6 +582,17 @@ a {
 
   .detail-hero {
     padding: 24px;
+  }
+
+  .retrieval-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .retrieval-query,
+  .retrieval-mode {
+    width: 100%;
+    grid-column: 1 / -1;
   }
 
   .hero-panel {

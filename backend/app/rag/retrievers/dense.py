@@ -1,28 +1,14 @@
 """Dense vector retrieval."""
 
-from dataclasses import dataclass
 from uuid import UUID
 
 from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.retrievers.base import RetrievedChunk
 from app.rag.vectorstores.qdrant import QdrantVectorStore
 
 
 class RetrievalError(ValueError):
     """Invalid dense-retrieval input."""
-
-
-@dataclass(frozen=True)
-class RetrievedChunk:
-    """A vector result normalized into a citation-ready chunk."""
-
-    chunk_id: str
-    document_id: str
-    filename: str
-    page_number: int
-    text: str
-    score: float
-    start_char: int
-    end_char: int
 
 
 class DenseRetriever:

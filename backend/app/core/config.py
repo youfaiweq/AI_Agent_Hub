@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_timeout_seconds: float = 30.0
     llm_temperature: float = 0.2
+    reranker_provider: str = "cohere"
+    reranker_base_url: str = "https://api.cohere.com/v2"
+    reranker_api_key: SecretStr = SecretStr("")
+    reranker_model_name: str = "rerank-v3.5"
+    reranker_timeout_seconds: float = 10.0
+    reranker_fallback_enabled: bool = False
+    reranker_top_k: int = 5
     minio_endpoint: str = "http://localhost:9000"
     minio_access_key: str = "agenthub"
     minio_secret_key: str = "agenthub-secret"

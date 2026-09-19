@@ -1,9 +1,11 @@
 # AgentHub
 
 AgentHub is an enterprise AI knowledge and task-agent platform. The current
-release is v0.2, covering authentication, user-owned knowledge bases, and
-document metadata/object storage. RAG and Agent features are intentionally
-deferred to later milestones.
+slice covers authentication, user-owned knowledge bases, document ingestion,
+dense retrieval, sparse retrieval, RRF-based hybrid retrieval, and
+citation-grounded chat. Reranking is available through a configured external
+Provider; Agents and later capabilities remain scheduled for subsequent
+milestones.
 
 ## Requirements
 
@@ -65,8 +67,16 @@ F2-T2 adds synchronous ingestion, idempotent processing, and failure tracking;
 F2-T3 adds the EmbeddingProvider contract and Qdrant vector storage adapter;
 F2-T4 adds dense retrieval, token-budgeted context, and citations; LLM-backed
 F2-T5 adds Conversation/Message persistence and an OpenAI-compatible Chat API.
-Chat endpoints are under `/api/v1/conversations`. Set `LLM_API_KEY` before
-using a real model; full production RAG evaluation remains deferred.
+F3-T1 adds PostgreSQL-backed sparse retrieval: processed chunks are persisted
+in `document_chunks` and searched with PostgreSQL full-text search and a GIN
+index. F3-T2 adds parallel Dense/Sparse candidate retrieval and independent
+RRF fusion with source-score normalization and duplicate handling. Chat
+endpoints are under `/api/v1/conversations`. F3-T3 adds a Cohere-compatible
+Reranker Adapter with timeout handling and explicit passthrough fallback. Set
+`LLM_API_KEY` and `RERANKER_API_KEY` before using real external Providers.
+F3-T4 adds Retrieval Debug API/UI and request-scoped versioned Evaluation
+Datasets with initial Retrieval Recall and Citation Correctness metrics; the
+F3-T5 v0.4 release gate is complete. The next Agent milestone remains deferred.
 
 ## Start frontend
 

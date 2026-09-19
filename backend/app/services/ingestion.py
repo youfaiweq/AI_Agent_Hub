@@ -12,6 +12,7 @@ from app.rag.embeddings import EmbeddingProvider
 from app.rag.errors import DocumentProcessingError
 from app.rag.pipeline import DocumentIngestionPipeline
 from app.rag.vectorstores.qdrant import QdrantVectorStore
+from app.repositories.document_chunks import DocumentChunkRepository
 from app.repositories.documents import DocumentRepository
 from app.repositories.knowledge_bases import KnowledgeBaseRepository
 from app.schemas.document import DocumentProcessingResponse, DocumentResponse
@@ -36,6 +37,7 @@ class IngestionService:
         self.vector_store = vector_store
         self.pipeline = pipeline or DocumentIngestionPipeline()
         self.documents = DocumentRepository(session)
+        self.document_chunks = DocumentChunkRepository(session)
         self.knowledge_bases = KnowledgeBaseRepository(session)
 
     async def process(
@@ -75,6 +77,11 @@ class IngestionService:
             if result.chunks:
                 vectors = await self.embedder.embed([chunk.text for chunk in result.chunks])
                 await self.vector_store.upsert_chunks(knowledge_base_id, list(result.chunks), vectors)
+            await self.document_chunks.replace_for_document(
+                document.id,
+                knowledge_base_id,
+                list(result.chunks),
+            )
             processed = await self.documents.get_owned(document.id, user_id, knowledge_base_id)
             if processed is None:
                 raise AppError("DOCUMENT_NOT_FOUND", "Document was not found", 404)

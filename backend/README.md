@@ -49,8 +49,19 @@ baseline, and Qdrant upsert/search/delete adapters; retrieval orchestration
 and semantic provider quality remain deferred. F2-T4 adds DenseRetriever,
 token-budgeted ContextBuilder, and traceable Citation output. F2-T5 adds
 Conversation/Message persistence, an OpenAI-compatible LLM adapter, and the
-retrieval-grounded Chat API. Conversation endpoints are under
-`/api/v1/conversations`; configure `LLM_API_KEY` before using a real model.
+retrieval-grounded Chat API. F3-T1 adds a PostgreSQL `document_chunks` snapshot,
+GIN-backed full-text search, and the `SparseRetriever` adapter sharing the
+same result contract as dense retrieval. F3-T2 adds `HybridRetriever` and an
+independent RRF fusion adapter with candidate sizing, score normalization, and
+duplicate chunk handling. Conversation endpoints are under
+`/api/v1/conversations`. F3-T3 adds a Cohere-compatible `BaseReranker` adapter
+with timeout handling, configured Top-K, and explicit passthrough fallback.
+Configure `LLM_API_KEY` and `RERANKER_API_KEY` before using real external
+Providers. F3-T4 adds authenticated Retrieval Debug endpoints for dense,
+sparse, hybrid, and rerank inspection, plus versioned request-scoped
+Evaluation Dataset metrics for initial retrieval recall and citation correctness.
+The v0.4 release gate has been verified; the next Agent milestone remains
+deferred.
 
 ## Run tests
 

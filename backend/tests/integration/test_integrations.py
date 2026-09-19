@@ -3,14 +3,22 @@
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import delete
 
+from app.core.database import dispose_engine, get_engine, get_session_factory
 from app.integrations.minio import MinioAdapter
 from app.integrations.qdrant import QdrantAdapter
 from app.integrations.redis import RedisAdapter
+from app.models.document import Document, DocumentStatus
+from app.models.document_chunk import DocumentChunk
+from app.models.knowledge_base import KnowledgeBase
+from app.models.user import User
 from app.rag.context.builder import ContextBuilder
 from app.rag.contracts import Chunk, ChunkMetadata
 from app.rag.embeddings.hash import HashEmbeddingProvider
 from app.rag.retrievers.dense import DenseRetriever
+from app.rag.retrievers.hybrid import HybridRetriever
+from app.rag.retrievers.sparse import SparseRetriever
 from app.rag.vectorstores.qdrant import QdrantVectorStore
 
 
@@ -63,3 +71,148 @@ async def test_qdrant_vector_store_round_trip() -> None:
 
         await store.delete_document(knowledge_base_id, document_id)
         assert await store.search(knowledge_base_id, vector, limit=1) == []
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_postgresql_sparse_retriever_round_trip() -> None:
+    email = f"sparse-{uuid4()}@example.com"
+    user_id = uuid4()
+    knowledge_base_id = uuid4()
+    document_id = uuid4()
+    user = User(id=user_id, email=email, password_hash="test-only")
+    knowledge_base = KnowledgeBase(id=knowledge_base_id, user_id=user_id, name="Sparse Search")
+    document = Document(
+        id=document_id,
+        user_id=user_id,
+        knowledge_base_id=knowledge_base_id,
+        filename="postgres.md",
+        content_type="text/markdown",
+        size_bytes=35,
+        storage_key=f"test/{uuid4()}.md",
+        status=DocumentStatus.COMPLETED,
+        chunk_count=1,
+    )
+    chunk = DocumentChunk(
+        id=uuid4(),
+        document_id=document_id,
+        knowledge_base_id=knowledge_base_id,
+        page_number=1,
+        start_char=0,
+        end_char=35,
+        text="PostgreSQL full text retrieval works.",
+    )
+
+    async with get_session_factory()() as session:
+        session.add(user)
+        await session.flush()
+        session.add(knowledge_base)
+        await session.flush()
+        session.add(document)
+        await session.flush()
+        session.add(chunk)
+        await session.commit()
+        try:
+            results = await SparseRetriever(session).retrieve(
+                knowledge_base_id,
+                "PostgreSQL retrieval",
+                top_k=3,
+            )
+            assert len(results) == 1
+            assert results[0].document_id == str(document.id)
+            assert results[0].filename == "postgres.md"
+            assert results[0].score > 0
+            assert await SparseRetriever(session).retrieve(uuid4(), "PostgreSQL") == []
+        finally:
+            await session.execute(delete(User).where(User.id == user_id))
+            await session.commit()
+    await dispose_engine()
+    get_engine.cache_clear()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_dense_sparse_hybrid_release_gate_round_trip() -> None:
+    user_id = uuid4()
+    knowledge_base_id = uuid4()
+    document_id = uuid4()
+    chunk_id = uuid4()
+    user = User(id=user_id, email=f"release-gate-{user_id}@example.com", password_hash="test-only")
+    knowledge_base = KnowledgeBase(id=knowledge_base_id, user_id=user_id, name="Release Gate")
+    document = Document(
+        id=document_id,
+        user_id=user_id,
+        knowledge_base_id=knowledge_base_id,
+        filename="release-gate.md",
+        content_type="text/markdown",
+        size_bytes=48,
+        storage_key=f"test/{uuid4()}.md",
+        status=DocumentStatus.COMPLETED,
+        chunk_count=1,
+    )
+    chunk = Chunk(
+        chunk_id=chunk_id,
+        text="PostgreSQL hybrid retrieval release gate",
+        metadata=ChunkMetadata(
+            document_id=document_id,
+            filename="release-gate.md",
+            page_number=1,
+            start_char=0,
+            end_char=48,
+        ),
+    )
+    searchable_chunk = DocumentChunk(
+        id=chunk_id,
+        document_id=document_id,
+        knowledge_base_id=knowledge_base_id,
+        page_number=1,
+        start_char=0,
+        end_char=48,
+        text=chunk.text,
+    )
+    embedder = HashEmbeddingProvider()
+
+    async with get_session_factory()() as session:
+        try:
+            session.add(user)
+            await session.flush()
+            session.add(knowledge_base)
+            await session.flush()
+            session.add(document)
+            await session.flush()
+            session.add(searchable_chunk)
+            await session.commit()
+
+            async with QdrantVectorStore() as vector_store:
+                vector = (await embedder.embed([chunk.text]))[0]
+                await vector_store.upsert_chunks(knowledge_base_id, [chunk], [vector])
+                dense_results = await DenseRetriever(embedder, vector_store).retrieve(
+                    knowledge_base_id,
+                    "PostgreSQL hybrid retrieval",
+                    top_k=1,
+                )
+                sparse_results = await SparseRetriever(session).retrieve(
+                    knowledge_base_id,
+                    "PostgreSQL hybrid retrieval",
+                    top_k=1,
+                )
+                hybrid_results = await HybridRetriever(
+                    DenseRetriever(embedder, vector_store),
+                    SparseRetriever(session),
+                ).retrieve(
+                    knowledge_base_id,
+                    "PostgreSQL hybrid retrieval",
+                    top_k=1,
+                    candidate_k=2,
+                )
+                assert dense_results[0].chunk_id == str(chunk_id)
+                assert sparse_results[0].chunk_id == str(chunk_id)
+                assert hybrid_results[0].chunk_id == str(chunk_id)
+                assert hybrid_results[0].dense_score is not None
+                assert hybrid_results[0].sparse_score is not None
+                await vector_store.delete_document(knowledge_base_id, document_id)
+        finally:
+            await session.execute(delete(User).where(User.id == user_id))
+            await session.commit()
+    await dispose_engine()
+    get_engine.cache_clear()

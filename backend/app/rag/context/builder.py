@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from math import ceil
 
-from app.rag.retrievers.dense import RetrievedChunk
+from app.rag.retrievers.base import RetrievedChunk
 
 
 @dataclass(frozen=True)

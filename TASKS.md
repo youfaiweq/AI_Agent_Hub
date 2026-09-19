@@ -21,7 +21,7 @@
 
 ## 当前仓库状态
 
-当前项目为 v0.1 基础工程，已有：
+当前项目已完成 v0.3 Naive RAG，并进入 v0.4 Advanced Retrieval，已有：
 
 - FastAPI 应用入口、配置、日志、统一异常处理
 - `/health` 与 Swagger/OpenAPI
@@ -31,9 +31,9 @@
 
 当前未完成：
 
-- F2-T3 Embedding and Vector Store
+- F4-T1 Agent Runtime Contracts 及后续里程碑
 
-下一项为 **F3-T1 Sparse Retrieval**；未经明确指令不得自动开始。
+下一项为 **F4-T1 Agent Runtime Contracts**；未经明确指令不得自动开始。
 
 ---
 
@@ -263,32 +263,61 @@
 
 ## F3-T1 — Sparse Retrieval
 
-优先复用 PostgreSQL Full-Text Search，不新增 Elasticsearch 等基础设施；封装为 SparseRetriever，保留未来替换空间。
+状态：`[x]`
+
+- 使用 PostgreSQL Full-Text Search（`simple` 配置）和 GIN 表达式索引
+- `document_chunks` 持久化处理后的 chunk 文本与页码/字符位置元数据
+- `SparseRetriever` 支持 `query`、`knowledge_base_id`、`top_k`、`score_threshold` 和 rank score
+- 与 `DenseRetriever` 共享 `RetrievedChunk` 结果结构和 `Retriever` 契约
+- ingestion 首次处理、重处理时同步替换 PostgreSQL chunk 快照
+- Sparse Retrieval 单元测试和 PostgreSQL 集成测试已覆盖
+- 不新增 Elasticsearch 等基础设施
 
 ## F3-T2 — Hybrid Retrieval and RRF
 
-- DenseRetriever + SparseRetriever
-- 独立 RRF Fusion
+状态：`[x]`
+
+- `HybridRetriever` 并行调用 DenseRetriever + SparseRetriever
+- 独立 `RRFusion`，支持 RRF 参数和来源权重
 - 分数归一化、候选集大小、重复 Chunk 处理
-- Hybrid Retrieval Contract Tests
+- Hybrid 结果保留 dense/sparse 原始分数、归一化分数、来源 rank 和 fusion score
+- Hybrid Retrieval Contract Tests 已覆盖
+- 不接入 Reranker，不修改 Chat API
 
 ## F3-T3 — Reranker Adapter
 
-- BaseReranker
-- 明确模型/Provider 配置
-- 超时、降级策略、Top-K
+状态：`[x]`
+
+- `BaseReranker`、`RerankedChunk` 和标准化 `RerankerError`
+- Cohere-compatible HTTP Reranker Provider Adapter
+- Settings/.env 支持 provider、model、API key、base URL、timeout、fallback、Top-K
+- 超时、HTTP 错误、非法响应、空配置和 Top-K 校验
+- fallback 必须显式开启，仅保留原检索顺序且不伪造 rerank score
 - 不使用关键词排序等伪 Reranker 冒充真实实现
+- Reranker Provider 单元测试已覆盖
 
 ## F3-T4 — Retrieval Debug and Evaluation
 
-- Retrieval Debug API/UI
-- query、chunk、document、dense_score、sparse_score、fusion_score、rerank_score、final_rank
-- Evaluation Dataset
-- Retrieval Recall、Citation Correctness 初始评估
+状态：`[x]`
+
+- Retrieval Debug API：支持 dense、sparse、hybrid、rerank 模式
+- Knowledge Base 详情页 Retrieval Test UI
+- 返回 query、chunk、document、page、snippet、dense_score、sparse_score、fusion_score、rerank_score、final_rank
+- Versioned request-scoped Evaluation Dataset API
+- 初始 Retrieval Recall 和 Citation Correctness 指标
+- API 所有权校验、失败错误转换和测试覆盖
+- 不接入 Agent、Langfuse 或生产级评测流水线
 
 ## F3-T5 — v0.4 Release Gate
 
-同一问题可比较 Dense、Sparse、Hybrid、Rerank 结果；调试信息可追踪，基础评测可重复运行。
+状态：`[x]`
+
+- 同一问题已通过真实 PostgreSQL/Qdrant 数据比较 Dense、Sparse、Hybrid 结果
+- Rerank Provider contract、排序、错误和显式 fallback 已通过测试
+- Debug API/UI 可追踪 query、chunk、document、各阶段 score 和 final_rank
+- 同一 Evaluation Dataset 重复运行结果一致
+- 后端、前端、Migration、Docker 健康和敏感文件验收通过
+- 真实 Cohere Rerank 请求仍需配置 `RERANKER_API_KEY`
 
 ---
 
@@ -412,4 +441,9 @@ Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，�
 **F2-T3 — Embedding and Vector Store 已完成。**
 **F2-T4 — Dense Retrieval and Context 已完成。**
 **F2-T5 — LLM Provider and Chat 已完成。**
-**F2-T6 — v0.3 Release Gate 已完成。** 下一项允许执行 **F3-T1 — Sparse Retrieval**，但未收到明确开发指令前不要自动开始。
+**F2-T6 — v0.3 Release Gate 已完成。**
+**F3-T1 — Sparse Retrieval 已完成。** 下一项允许执行 **F3-T2 — Hybrid Retrieval and RRF**，但未收到明确开发指令前不要自动开始。
+**F3-T2 — Hybrid Retrieval and RRF 已完成。**
+**F3-T3 — Reranker Adapter 已完成。** 下一项允许执行 **F3-T4 — Retrieval Debug and Evaluation**，但未收到明确开发指令前不要自动开始。
+**F3-T4 — Retrieval Debug and Evaluation 已完成。** 下一项允许执行 **F3-T5 — v0.4 Release Gate**，但未收到明确开发指令前不要自动开始。
+**F3-T5 — v0.4 Release Gate 已完成。** 下一项允许执行 **F4-T1 — Agent Runtime Contracts**，但未收到明确开发指令前不要自动开始。
