@@ -5,8 +5,9 @@ slice covers authentication, user-owned knowledge bases, document ingestion,
 dense retrieval, sparse retrieval, RRF-based hybrid retrieval, and
 citation-grounded chat. Reranking is available through a configured external
 Provider, the Agent Runtime, Tool Registry, initial read-only tools, and the
-first non-streaming Agent API/UI are now in place. Memory and HITL remain
-scheduled for subsequent milestones.
+first non-streaming Agent API/UI, bounded short-term Conversation memory,
+explicit long-term Memory, and the Approval Runtime are now in place. The v0.6
+release gate has passed; Observability remains the next milestone.
 
 ## Requirements
 
@@ -84,10 +85,22 @@ provider-neutral Tool Registry with input validation, structured errors,
 timeouts, logging, and ToolCallRecord persistence. Concrete tools remain
 F4-T3 adds knowledge search, AST-safe calculator, whitelisted read-only SQL,
 and a provider-adapted web search tool. F4-T4 adds Agent configuration, runs,
-run history, Tool Call records, and a non-streaming Agents UI. Memory and HITL
-remain deferred. Agent routing defaults to `qwen-flash`, while final Chat and
+run history, Tool Call records, and a non-streaming Agents UI. F5-T1 now adds
+bounded short-term Conversation memory: Chat and Agent history
+are loaded from the existing `messages` table, selected by message count and
+transparent token budget, and user/assistant turns are persisted for Agent
+runs that provide a `conversation_id`. Configure `AGENT_CONTEXT_TOKEN_BUDGET`
+alongside the existing Chat/Agent limits. No new migration is required.
+F5-T2 adds user-owned structured long-term memories with explicit extraction,
+confirmation, search, edit, and delete flows. The extractor never persists an
+ordinary chat line or copies the full conversation history. Agent routing defaults to `qwen-flash`, while final Chat and
 Agent answers default to `qwen-plus`; Chat/Agent history and retrieval context
 are bounded by environment-configured limits.
+F5-T3 adds the provider-neutral dangerous Tool approval contract, durable
+approval state with expiry and idempotent approve/reject/resume actions, and
+the Agent approval UI. The v0.6 release gate verifies that dangerous Tools are
+blocked before approval, can resume after approval, and reach explicit terminal
+states after rejection or expiry. No new side-effect Tool is enabled.
 
 ## Start frontend
 

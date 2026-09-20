@@ -50,6 +50,16 @@ class SlowTool(EchoTool):
         return arguments["value"]
 
 
+class DangerousTool(EchoTool):
+    @property
+    def name(self) -> str:
+        return "send_notification"
+
+    @property
+    def requires_approval(self) -> bool:
+        return True
+
+
 @dataclass
 class FakeRecorder:
     created: list[dict[str, object]]
@@ -145,3 +155,18 @@ async def test_registry_enforces_execution_timeout() -> None:
     )
 
     assert result.error_code == "TOOL_TIMEOUT"
+
+
+@pytest.mark.asyncio
+async def test_registry_requires_approval_before_dangerous_tool_execution() -> None:
+    registry = ToolRegistry()
+    registry.register(DangerousTool())
+
+    result = await registry.execute(
+        {"call_id": "approval-call", "name": "send_notification", "arguments": {"value": "x"}},
+        state(),
+    )
+
+    assert result.approval_required is True
+    assert result.error_code is None
+    assert registry.get_descriptor("send_notification").requires_approval is True

@@ -32,6 +32,21 @@ class RecordingToolExecutor:
         return ToolExecutionResult(result={"value": "tool result"})
 
 
+class ApprovalToolExecutor(RecordingToolExecutor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.approved = False
+
+    async def execute(self, tool_call, state):
+        self.calls.append(tool_call)
+        if not self.approved:
+            return ToolExecutionResult(
+                approval_required=True,
+                approval_message="Approval required",
+            )
+        return ToolExecutionResult(result={"value": "approved result"})
+
+
 def initial_state() -> dict:
     return {
         "user_id": uuid4(),
@@ -130,3 +145,39 @@ def test_agent_runtime_config_rejects_unbounded_limits() -> None:
         AgentRuntimeConfig(max_steps=0)
     with pytest.raises(AgentRuntimeError):
         AgentRuntimeConfig(timeout_seconds=0)
+
+
+@pytest.mark.asyncio
+async def test_agent_runtime_interrupts_and_resumes_approved_tool_call() -> None:
+    executor = ApprovalToolExecutor()
+    runtime = AgentRuntime(
+        ScriptedHandler(
+            [
+                AgentDecision(
+                    tool_call={
+                        "call_id": "approval-call",
+                        "name": "send_notification",
+                        "arguments": {"message": "hello"},
+                        "status": "pending",
+                    }
+                ),
+                AgentDecision(assistant_message={"role": "assistant", "content": "sent"}, done=True),
+            ]
+        ),
+        executor,
+    )
+
+    waiting = await runtime.run(initial_state())
+
+    assert waiting["status"] == "waiting_approval"
+    assert waiting["approval_request"]["tool_name"] == "send_notification"
+    assert len(executor.calls) == 1
+
+    executor.approved = True
+    waiting["approved_tool_call_id"] = "approval-call"
+    waiting["resume_approval"] = True
+    resumed = await runtime.run(waiting)
+
+    assert resumed["status"] == "completed"
+    assert resumed["messages"][-1]["content"] == "sent"
+    assert len(executor.calls) == 2

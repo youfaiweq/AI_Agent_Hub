@@ -100,6 +100,15 @@ class ToolCallRepository:
         )
         return list(result.scalars().all())
 
+    async def get_for_run_call(self, agent_run_id: UUID, call_id: str) -> ToolCallRecord | None:
+        result = await self.session.execute(
+            select(ToolCallRecord).where(
+                ToolCallRecord.agent_run_id == agent_run_id,
+                ToolCallRecord.call_id == call_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def create(
         self,
         *,

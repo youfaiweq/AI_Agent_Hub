@@ -92,3 +92,14 @@ async def test_llm_decision_handler_switches_to_final_model_after_tool_results()
     assert len(final.messages) == 1
     assert "5" in final.messages[0][-1].content
     assert "old" not in final.messages[0][-1].content
+
+
+@pytest.mark.asyncio
+async def test_llm_decision_handler_keeps_current_message_outside_history_budget() -> None:
+    llm = FakeLLM('{"action":"answer","content":"ok"}')
+    handler = LLMDecisionHandler(llm, (), history_limit=2, context_token_budget=1)
+    current = "This current request must remain complete."
+
+    await handler.decide({"messages": [{"role": "user", "content": current}], "tool_results": []})
+
+    assert llm.messages[0][-1].content == current

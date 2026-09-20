@@ -21,7 +21,7 @@
 
 ## 当前仓库状态
 
-当前项目已完成 v0.3 Naive RAG，并进入 v0.4 Advanced Retrieval，已有：
+当前项目已完成 v0.6 Release Gate，并进入 v0.7 Observability & Evaluation，已有：
 
 - FastAPI 应用入口、配置、日志、统一异常处理
 - `/health` 与 Swagger/OpenAPI
@@ -31,9 +31,9 @@
 
 当前未完成：
 
-- F4-T5 v0.5 Release Gate 及后续里程碑
+- F6-T1 Observability Adapter 及后续里程碑
 
-下一项为 **F4-T5 v0.5 Release Gate**；未经明确指令不得自动开始。
+下一项为 **F6-T1 Observability Adapter**；未经明确指令不得自动开始。
 
 ---
 
@@ -374,6 +374,8 @@
 
 ## F4-T5 — v0.5 Release Gate
 
+- 状态：`[x]`
+
 Agent 能根据问题选择工具、在最大步数内结束、记录每次 Tool Call，并正确处理工具错误和超时。
 
 ---
@@ -382,26 +384,71 @@ Agent 能根据问题选择工具、在最大步数内结束、记录每次 Tool
 
 ## F5-T1 — Short-term Conversation Memory
 
+- 状态：`[x]`
+
 - Conversation 历史加载与上下文窗口
 - Token Budget、截断策略、消息持久化
 
+实现说明：
+
+- `app/memory/short_term` 提供按最新连续消息、最大消息数和透明字符/token 估算选择上下文的策略
+- Chat 在 LLM 生成前加载历史；当前请求不被短期窗口截断，user/assistant 消息继续写入现有 `messages` 表
+- 带 `conversation_id` 的 Agent Run 加载并持久化 Conversation user/assistant 消息，并复用相同窗口策略
+- 新增 `AGENT_CONTEXT_TOKEN_BUDGET` 配置；默认值为 2000
+- 本 Task 复用 `0006_conversations_messages`，无需新增 Alembic Migration
+
+验收：短期记忆单元测试、Chat 多轮 API/集成测试和 Agent 多轮 API/集成测试已覆盖。
+
 ## F5-T2 — Explicit Long-term Memory
+
+- 状态：`[x]`
 
 - 结构化 Memory Model、来源、置信度、更新时间
 - 只保存用户明确要求记住或经确认的信息
 - 提取、检索、编辑、删除 API/UI
 - 禁止把全部聊天记录复制为长期 Memory
 
+实现说明：
+
+- 新增 `long_term_memories` 表、`LongTermMemory` Model、Repository 和 `0010_long_term_memories` Migration
+- `POST /api/v1/memories/extract` 只识别明确的“remember/记住”指令，返回待确认候选，不自动持久化
+- `POST/GET/PATCH/DELETE /api/v1/memories` 提供用户所有权范围内的显式记忆 CRUD 与内容检索
+- Memory UI 支持提取候选、确认保存、列表搜索、编辑和删除
+- 不复制聊天记录，不做隐式 LLM 记忆提取
+
+验收：单元、API/集成测试、前端类型检查与构建、Migration head 检查均已通过。
+
 ## F5-T3 — Approval Runtime
+
+- 状态：`[x]`
 
 - Dangerous Tool 定义
 - interrupt、waiting_approval、approve、reject、resume
 - Approval 状态持久化、幂等与过期
 - 前端审批 UI
 
+实现说明：
+
+- `BaseTool.requires_approval` 和 `ToolDescriptor.requires_approval` 定义危险 Tool 契约，当前未新增实际副作用 Tool
+- Agent Runtime 在危险 Tool 执行前中断并进入 `waiting_approval`，保存 pending tool call
+- `agent_approvals` 表和 `0011_agent_approvals` Migration 持久化审批状态、过期时间和决定时间
+- 提供 approve、reject、resume API；重复相同操作幂等，拒绝或过期进入明确 failed 终态
+- Agent 详情页增加审批确认/拒绝 UI
+
+验收：Runtime/Tool Registry 单元测试、Agent API/集成审批测试、全量 pytest、Ruff、前端类型检查与构建、Migration head 检查均已通过。
+
 ## F5-T4 — v0.6 Release Gate
 
+- 状态：`[x]`
+
 Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，拒绝后有明确终态和审计记录。
+
+验收记录：
+
+- Dangerous Tool 首次执行进入 `waiting_approval`，不会调用实际 Tool
+- approve 会恢复 pending Tool Call 并完成 Agent Run
+- reject、过期和重复操作均有明确、可审计的终态
+- 后端、前端、Compose、Docker 健康、Alembic 和敏感文件检查均已通过
 
 ---
 
@@ -469,4 +516,9 @@ Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，�
 **F4-T1 — Agent Runtime Contracts 已完成。** 下一项允许执行 **F4-T2 — Tool Registry**，但未收到明确开发指令前不要自动开始。
 **F4-T2 — Tool Registry 已完成。** 下一项允许执行 **F4-T3 — Read-only Tools**，但未收到明确开发指令前不要自动开始。
 **F4-T3 — Read-only Tools 已完成。** 下一项允许执行 **F4-T4 — Agent API and UI**，但未收到明确开发指令前不要自动开始。
-**F4-T4 — Agent API and UI 已完成。** 下一项允许执行 **F4-T5 — v0.5 Release Gate**，但未收到明确开发指令前不要自动开始。
+**F4-T4 — Agent API and UI 已完成。**
+**F4-T5 — v0.5 Release Gate 已完成。** 下一项允许执行 **F5-T1 — Short-term Conversation Memory**，但未收到明确开发指令前不要自动开始。
+**F5-T1 — Short-term Conversation Memory 已完成。** 下一项允许执行 **F5-T2 — Explicit Long-term Memory**，但未收到明确开发指令前不要自动开始。
+**F5-T2 — Explicit Long-term Memory 已完成。** 下一项允许执行 **F5-T3 — Approval Runtime**，但未收到明确开发指令前不要自动开始。
+**F5-T3 — Approval Runtime 已完成。** 下一项允许执行 **F5-T4 — v0.6 Release Gate**，但未收到明确开发指令前不要自动开始。
+**F5-T4 — v0.6 Release Gate 已完成。** 下一项允许执行 **F6-T1 — Observability Adapter**，但未收到明确开发指令前不要自动开始。

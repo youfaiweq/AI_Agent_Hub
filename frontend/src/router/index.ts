@@ -7,6 +7,7 @@ import DashboardView from '@/views/DashboardView.vue'
 import KnowledgeBaseDetailView from '@/views/KnowledgeBaseDetailView.vue'
 import KnowledgeBasesView from '@/views/KnowledgeBasesView.vue'
 import LoginView from '@/views/LoginView.vue'
+import MemoriesView from '@/views/MemoriesView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -45,6 +46,12 @@ const router = createRouter({
           name: 'agents',
           component: AgentsView,
           meta: { title: 'Agents', requiresAuth: true },
+        },
+        {
+          path: 'memories',
+          name: 'memories',
+          component: MemoriesView,
+          meta: { title: 'Long-term Memory', requiresAuth: true },
         },
         {
           path: 'agents/:id',

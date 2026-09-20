@@ -37,3 +37,13 @@ export async function listAgentRuns(id: string): Promise<AgentRunListResponse> {
   const { data } = await http.get<AgentRunListResponse>(`/api/v1/agents/${id}/runs`)
   return data
 }
+
+export async function approveAgentRun(agentId: string, runId: string): Promise<AgentRun> {
+  const { data } = await http.post<AgentRun>(`/api/v1/agents/${agentId}/runs/${runId}/approve`)
+  return data
+}
+
+export async function rejectAgentRun(agentId: string, runId: string): Promise<AgentRun> {
+  const { data } = await http.post<AgentRun>(`/api/v1/agents/${agentId}/runs/${runId}/reject`)
+  return data
+}

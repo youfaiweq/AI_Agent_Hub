@@ -337,6 +337,30 @@ a {
   color: #b54747;
 }
 
+.approval-card {
+  border-color: #f3d19e;
+  background: #fffbf2;
+}
+
+.approval-arguments {
+  max-width: 100%;
+  margin: 14px 0 0;
+  padding: 12px;
+  overflow-x: auto;
+  border-radius: 8px;
+  color: #6b4a1b;
+  background: #fff7e6;
+  font-size: 12px;
+}
+
+.memory-extractor {
+  margin-bottom: 22px;
+}
+
+.memory-confirm {
+  margin-top: 10px;
+}
+
 .retrieval-table {
   --el-table-border-color: #edf0f5;
   --el-table-header-bg-color: #fafbfe;

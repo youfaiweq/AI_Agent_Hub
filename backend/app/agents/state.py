@@ -59,3 +59,6 @@ class AgentState(TypedDict, total=False):
     error_code: str | None
     error_message: str | None
     pending_tool_call: ToolCallState | None
+    approval_request: dict[str, JSONValue] | None
+    approved_tool_call_id: str | None
+    resume_approval: bool

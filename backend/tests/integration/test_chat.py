@@ -19,9 +19,11 @@ class FakeLLMProvider(LLMProvider):
     def __init__(self) -> None:
         self.calls = 0
         self.empty = False
+        self.requests: list[list[LLMMessage]] = []
 
     async def generate(self, messages: list[LLMMessage]) -> LLMResponse:
         self.calls += 1
+        self.requests.append(list(messages))
         if self.empty:
             return LLMResponse(content="", model="fake")
         return LLMResponse(content="The document confirms the requested detail.", model="fake")
@@ -122,6 +124,29 @@ async def test_conversation_chat_returns_citations_and_handles_no_context() -> N
             assert fake_llm.calls == 1
             assert answered.json()["message"]["content"] == "The document confirms the requested detail."
             assert answered.json()["citations"][0]["filename"] == "answer.md"
+
+            second_answer = await client.post(
+                f"/api/v1/conversations/{conversation_id}/chat",
+                headers=headers,
+                json={"message": "Can you repeat the launch date?"},
+            )
+            assert second_answer.status_code == 200
+            assert fake_llm.calls == 2
+            assert any(
+                item.role == "user" and item.content == "What is the launch date?"
+                for item in fake_llm.requests[1]
+            )
+            messages = await client.get(
+                f"/api/v1/conversations/{conversation_id}/messages",
+                headers=headers,
+            )
+            assert messages.status_code == 200
+            assert [item["role"] for item in messages.json()["items"]] == [
+                "user",
+                "assistant",
+                "user",
+                "assistant",
+            ]
 
             fake_llm.empty = True
             empty_response_conversation = await client.post(

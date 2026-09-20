@@ -56,6 +56,7 @@ class ToolDescriptor:
     name: str
     description: str
     input_schema: dict[str, JSONValue]
+    requires_approval: bool = False
 
 
 class BaseTool(ABC):
@@ -76,6 +77,12 @@ class BaseTool(ABC):
     def input_schema(self) -> dict[str, JSONValue]:
         """Return a JSON-schema-like object input contract."""
 
+    @property
+    def requires_approval(self) -> bool:
+        """Return whether this tool must wait for explicit user approval."""
+
+        return False
+
     @abstractmethod
     async def execute(
         self,
@@ -91,6 +98,8 @@ class ToolCallRecorder(Protocol):
     async def create(self, **kwargs: object) -> object: ...
 
     async def update_status(self, record: object, **kwargs: object) -> object: ...
+
+    async def get_for_run_call(self, agent_run_id: UUID, call_id: str) -> object | None: ...
 
 
 class ToolRegistry:
@@ -138,12 +147,26 @@ class ToolRegistry:
             arguments = tool_call.get("arguments", {})
             if not isinstance(arguments, dict):
                 raise ToolError("TOOL_INVALID_INPUT", "Tool arguments must be an object")
-            record = await self._start_record(state, call_id, tool_name, arguments)
+            record = await self._resume_record(state, call_id)
+            if record is None:
+                record = await self._start_record(state, call_id, tool_name, arguments)
             await self._mark_record_running(record)
             tool = self._tools.get(tool_name)
             if tool is None:
                 raise ToolError("TOOL_NOT_FOUND", f"Tool is not registered: {tool_name}")
             self._validate_arguments(tool.input_schema, arguments)
+            if tool.requires_approval and state.get("approved_tool_call_id") != call_id:
+                approval_message = f"Approval required before executing tool: {tool_name}"
+                await self._finish_record(
+                    record,
+                    "waiting_approval",
+                    error_code="TOOL_APPROVAL_REQUIRED",
+                    error_message=approval_message,
+                )
+                return ToolExecutionResult(
+                    approval_required=True,
+                    approval_message=approval_message,
+                )
             async with asyncio.timeout(self.timeout_seconds):
                 result = await tool.execute(arguments, ToolContext.from_state(state))
             duration_ms = round((perf_counter() - started) * 1000, 2)
@@ -213,7 +236,12 @@ class ToolRegistry:
         schema = tool.input_schema
         if not isinstance(schema, dict) or schema.get("type") != "object":
             raise ToolRegistryError(f"Tool input_schema must describe an object: {name}")
-        return ToolDescriptor(name=name, description=description, input_schema=schema)
+        return ToolDescriptor(
+            name=name,
+            description=description,
+            input_schema=schema,
+            requires_approval=tool.requires_approval,
+        )
 
     @staticmethod
     def _validate_arguments(
@@ -268,6 +296,16 @@ class ToolRegistry:
             tool_name=tool_name,
             arguments=arguments,
         )
+
+    async def _resume_record(self, state: AgentState, call_id: str) -> object | None:
+        if self.recorder is None or state.get("agent_run_id") is None:
+            return None
+        if not state.get("resume_approval"):
+            return None
+        get_record = getattr(self.recorder, "get_for_run_call", None)
+        if get_record is None:
+            return None
+        return await get_record(state["agent_run_id"], call_id)
 
     async def _finish_record(
         self,

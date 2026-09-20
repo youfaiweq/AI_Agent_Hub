@@ -113,3 +113,33 @@ async def get_agent_run(
     service: ServiceDependency,
 ) -> AgentRunResponse:
     return await service.get_run(user.id, agent_id, run_id)
+
+
+@router.post("/{agent_id}/runs/{run_id}/approve", response_model=AgentRunResponse)
+async def approve_agent_run(
+    agent_id: UUID,
+    run_id: UUID,
+    user: UserDependency,
+    service: RuntimeServiceDependency,
+) -> AgentRunResponse:
+    return await service.approve(user.id, agent_id, run_id)
+
+
+@router.post("/{agent_id}/runs/{run_id}/reject", response_model=AgentRunResponse)
+async def reject_agent_run(
+    agent_id: UUID,
+    run_id: UUID,
+    user: UserDependency,
+    service: ServiceDependency,
+) -> AgentRunResponse:
+    return await service.reject(user.id, agent_id, run_id)
+
+
+@router.post("/{agent_id}/runs/{run_id}/resume", response_model=AgentRunResponse)
+async def resume_agent_run(
+    agent_id: UUID,
+    run_id: UUID,
+    user: UserDependency,
+    service: RuntimeServiceDependency,
+) -> AgentRunResponse:
+    return await service.resume(user.id, agent_id, run_id)

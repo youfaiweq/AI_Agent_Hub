@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.base import utc_now
 from app.models.conversation import Conversation, Message
 
 
@@ -38,6 +39,12 @@ class ConversationRepository:
 
     async def delete(self, conversation: Conversation) -> None:
         await self.session.delete(conversation)
+
+    @staticmethod
+    def touch(conversation: Conversation) -> None:
+        """Update recency when a message changes the conversation."""
+
+        conversation.updated_at = utc_now()
 
 
 class MessageRepository:

@@ -25,6 +25,7 @@ class ToolCallStatus(StrEnum):
 
     PENDING = "pending"
     RUNNING = "running"
+    WAITING_APPROVAL = "waiting_approval"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
@@ -75,3 +76,28 @@ class ToolCallRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     started_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class ApprovalStatus(StrEnum):
+    """Persisted lifecycle states for one dangerous tool approval."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+
+
+class AgentApproval(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Durable approval request for one pending dangerous tool call."""
+
+    __tablename__ = "agent_approvals"
+
+    agent_run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    call_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    arguments: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default=ApprovalStatus.PENDING)
+    expires_at: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
+    decided_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True)

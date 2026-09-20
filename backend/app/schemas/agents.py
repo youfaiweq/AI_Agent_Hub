@@ -68,6 +68,17 @@ class ToolCallResponse(BaseModel):
     finished_at: datetime | None
 
 
+class ApprovalResponse(BaseModel):
+    id: UUID
+    agent_run_id: UUID
+    call_id: str
+    tool_name: str
+    arguments: dict[str, object] | None
+    status: str
+    expires_at: datetime
+    decided_at: datetime | None
+
+
 class AgentRunResponse(BaseModel):
     id: UUID
     agent_id: UUID
@@ -85,6 +96,7 @@ class AgentRunResponse(BaseModel):
     started_at: datetime | None
     finished_at: datetime | None
     tool_calls: list[ToolCallResponse]
+    approval: ApprovalResponse | None = None
 
 
 class AgentRunListResponse(BaseModel):

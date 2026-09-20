@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.exceptions import AppError
+from app.memory.short_term import MemoryMessage, ShortTermMemory
 from app.models.conversation import Conversation, Message
 from app.rag.context.builder import Citation, ContextBuilder
 from app.rag.llms.base import LLMError, LLMMessage, LLMProvider
@@ -38,6 +39,10 @@ class ChatService:
         self.knowledge_bases = KnowledgeBaseRepository(session)
         self.settings = get_settings()
         self.context_builder = ContextBuilder(token_budget=self.settings.chat_context_token_budget)
+        self.memory = ShortTermMemory(
+            max_messages=self.settings.chat_history_max_messages,
+            token_budget=self.settings.chat_context_token_budget,
+        )
 
     async def create_conversation(self, user_id: UUID, payload: ConversationCreate) -> ConversationResponse:
         knowledge_base = await self.knowledge_bases.get_owned(payload.knowledge_base_id, user_id)
@@ -73,7 +78,8 @@ class ChatService:
 
     async def chat(self, user_id: UUID, conversation_id: UUID, message: str) -> ChatResponse:
         conversation = await self.get_conversation(user_id, conversation_id)
-        await self.messages.create(conversation.id, "user", message)
+        user_message = await self.messages.create(conversation.id, "user", message)
+        self.conversations.touch(conversation)
         await self.session.commit()
 
         try:
@@ -91,16 +97,21 @@ class ChatService:
         if not citations:
             answer = NO_CONTEXT_ANSWER
         else:
-            history = await self.messages.list_for_conversation(
+            history_records = await self.messages.list_for_conversation(
                 conversation.id,
-                limit=self.settings.chat_history_max_messages,
+                limit=self.settings.chat_history_max_messages + 1,
+            )
+            history = self.memory.select(
+                [
+                    MemoryMessage(role=item.role, content=item.content)
+                    for item in history_records
+                    if item.id != user_message.id and item.role in {"user", "assistant"}
+                ]
             )
             prompt = f"Knowledge-base context:\n{context.text}\n\nUser question:\n{message}"
             llm_messages = [LLMMessage(role="system", content=SYSTEM_PROMPT)]
             llm_messages.extend(
-                LLMMessage(role=item.role, content=item.content)
-                for item in history[:-1]
-                if item.role in {"user", "assistant"}
+                LLMMessage(role=item.role, content=item.content) for item in history.messages
             )
             llm_messages.append(LLMMessage(role="user", content=prompt))
             try:
@@ -117,6 +128,7 @@ class ChatService:
             answer,
             [citation.model_dump() for citation in citations],
         )
+        self.conversations.touch(conversation)
         await self.session.commit()
         return ChatResponse(
             conversation=ConversationResponse.model_validate(conversation),

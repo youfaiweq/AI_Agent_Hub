@@ -48,8 +48,10 @@ class Settings(BaseSettings):
     reranker_top_k: int = 5
     agent_max_steps: int = 10
     agent_timeout_seconds: float = 30.0
+    agent_approval_timeout_seconds: float = Field(default=900.0, gt=0)
     agent_router_model: str = "qwen-flash"
     agent_history_max_messages: int = 8
+    agent_context_token_budget: int = 2000
     agent_tool_results_max: int = 4
     tool_timeout_seconds: float = 30.0
     chat_history_max_messages: int = 8

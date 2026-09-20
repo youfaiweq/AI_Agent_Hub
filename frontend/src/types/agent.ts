@@ -40,6 +40,17 @@ export interface ToolCallRecord {
   finished_at: string | null
 }
 
+export interface AgentApproval {
+  id: string
+  agent_run_id: string
+  call_id: string
+  tool_name: string
+  arguments: Record<string, unknown> | null
+  status: 'pending' | 'approved' | 'rejected' | 'expired'
+  expires_at: string
+  decided_at: string | null
+}
+
 export interface AgentRun {
   id: string
   agent_id: string
@@ -57,6 +68,7 @@ export interface AgentRun {
   started_at: string | null
   finished_at: string | null
   tool_calls: ToolCallRecord[]
+  approval: AgentApproval | null
 }
 
 export interface AgentRunListResponse {

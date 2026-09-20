@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
-import { getAgent, listAgentRuns, runAgent } from '@/api/agents'
+import { approveAgentRun, getAgent, listAgentRuns, rejectAgentRun, runAgent } from '@/api/agents'
 import { getApiErrorMessage } from '@/api/http'
 import type { Agent, AgentRun } from '@/types/agent'
 
@@ -16,6 +16,7 @@ const message = ref('')
 const loading = ref(false)
 const running = ref(false)
 const error = ref<string | null>(null)
+const approvalBusy = ref(false)
 
 async function load(): Promise<void> {
   loading.value = true
@@ -44,6 +45,24 @@ async function execute(): Promise<void> {
     error.value = getApiErrorMessage(requestError, 'Agent run failed.')
   } finally {
     running.value = false
+  }
+}
+
+async function decideApproval(approve: boolean): Promise<void> {
+  const pending = runs.value.find((item) => item.status === 'waiting_approval' && item.approval?.status === 'pending')
+  if (!pending) return
+  approvalBusy.value = true
+  error.value = null
+  try {
+    const updated = approve
+      ? await approveAgentRun(agentId.value, pending.id)
+      : await rejectAgentRun(agentId.value, pending.id)
+    runs.value = runs.value.map((item) => (item.id === updated.id ? updated : item))
+    ElMessage.success(approve ? 'Approval accepted and run resumed.' : 'Approval rejected.')
+  } catch (requestError) {
+    error.value = getApiErrorMessage(requestError, 'Unable to decide this approval.')
+  } finally {
+    approvalBusy.value = false
   }
 }
 
@@ -86,6 +105,30 @@ onMounted(() => void load())
       <div class="run-actions">
         <el-button type="primary" :loading="running" :disabled="!message.trim()" @click="execute">Run Agent</el-button>
       </div>
+    </el-card>
+
+    <el-card
+      v-if="runs.some((item) => item.status === 'waiting_approval' && item.approval?.status === 'pending')"
+      shadow="never"
+      class="content-card approval-card"
+    >
+      <div class="section-heading compact-heading">
+        <div>
+          <p class="page-eyebrow">Human approval required</p>
+          <h3>Review dangerous Tool call</h3>
+        </div>
+        <el-tag type="warning">Waiting</el-tag>
+      </div>
+      <template v-for="run in runs" :key="`approval-${run.id}`">
+        <div v-if="run.status === 'waiting_approval' && run.approval?.status === 'pending'">
+          <p class="page-copy">Tool <strong>{{ run.approval.tool_name }}</strong> requested an external side effect.</p>
+          <pre class="approval-arguments">{{ JSON.stringify(run.approval.arguments, null, 2) }}</pre>
+          <div class="run-actions">
+            <el-button :loading="approvalBusy" type="danger" @click="decideApproval(false)">Reject</el-button>
+            <el-button :loading="approvalBusy" type="primary" @click="decideApproval(true)">Approve and resume</el-button>
+          </div>
+        </div>
+      </template>
     </el-card>
 
     <el-card shadow="never" class="content-card">

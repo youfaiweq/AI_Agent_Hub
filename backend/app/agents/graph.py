@@ -57,6 +57,25 @@ def build_agent_graph(
         if tool_call is None:
             raise AgentRuntimeError("TOOL_CALL_MISSING", "Agent tool node has no pending tool call")
         result = await tool_executor.execute(tool_call, state)
+        if result.approval_required:
+            updated_calls = [dict(item) for item in state.get("tool_calls", [])]
+            for item in reversed(updated_calls):
+                if item.get("call_id") == tool_call.get("call_id"):
+                    item["status"] = "waiting_approval"
+                    break
+            return {
+                "tool_calls": updated_calls,
+                "pending_tool_call": tool_call,
+                "approval_request": {
+                    "tool_call_id": tool_call.get("call_id"),
+                    "tool_name": tool_call.get("name"),
+                    "arguments": tool_call.get("arguments", {}),
+                    "message": result.approval_message or "Tool approval is required",
+                    "status": "pending",
+                },
+                "resume_approval": False,
+                "status": "waiting_approval",
+            }
         tool_results = list(state.get("tool_results", []))
         tool_results.append(result.result)
         updated_calls = [dict(item) for item in state.get("tool_calls", [])]
@@ -72,12 +91,18 @@ def build_agent_graph(
                 "tool_calls": updated_calls,
                 "tool_results": tool_results,
                 "pending_tool_call": None,
+                "approval_request": None,
+                "approved_tool_call_id": None,
+                "resume_approval": False,
                 **_failed_update(result.error_code, result.error_message or "Tool execution failed"),
             }
         return {
             "tool_calls": updated_calls,
             "tool_results": tool_results,
             "pending_tool_call": None,
+            "approval_request": None,
+            "approved_tool_call_id": None,
+            "resume_approval": False,
             "status": "running",
         }
 
@@ -94,12 +119,20 @@ def build_agent_graph(
     workflow = StateGraph(AgentState)
     workflow.add_node("agent", agent_node)
     workflow.add_node("tool", tool_node)
-    workflow.add_edge(START, "agent")
+    workflow.add_conditional_edges(START, route_after_start, {"agent": "agent", "tool": "tool"})
     workflow.add_conditional_edges(
         "agent", route_after_agent, {"agent": "agent", "tool": "tool", END: END}
     )
     workflow.add_conditional_edges("tool", route_after_tool, {"agent": "agent", END: END})
     return workflow.compile()
+
+
+def route_after_start(state: AgentState) -> str:
+    """Resume an approved pending tool call instead of asking the model again."""
+
+    if state.get("resume_approval") and state.get("pending_tool_call") is not None:
+        return "tool"
+    return "agent"
 
 
 def _check_cancelled(cancel_event: asyncio.Event | None) -> None:

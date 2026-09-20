@@ -68,12 +68,30 @@ structured errors, timeouts, execution logging, and ToolCallRecord
 persistence. F4-T3 adds `knowledge_search`, AST-safe `calculator`, whitelisted
 read-only `sql_query`, and Provider-adapted `web_search`. F4-T4 adds Agent
 configuration CRUD, non-streaming Agent runs, run history, and Tool Call
-records. Streaming, Memory, and HITL remain deferred.
+records. F5-T1 adds bounded short-term Conversation memory, F5-T2 adds
+explicit long-term Memory, and F5-T3 adds the Approval Runtime.
 The default two-level model setup uses `AGENT_ROUTER_MODEL=qwen-flash` for
 tool selection and `LLM_MODEL=qwen-plus`/Agent model configuration for final
 answers. `CHAT_HISTORY_MAX_MESSAGES`, `CHAT_CONTEXT_TOKEN_BUDGET`,
-`AGENT_HISTORY_MAX_MESSAGES`, and `AGENT_TOOL_RESULTS_MAX` bound repeated
-context tokens.
+`AGENT_HISTORY_MAX_MESSAGES`, `AGENT_CONTEXT_TOKEN_BUDGET`, and
+`AGENT_TOOL_RESULTS_MAX` bound repeated context tokens. F5-T1 adds a reusable
+short-term memory policy that loads the newest contiguous history within those
+limits. Chat persists its existing user/assistant turns, and Agent runs persist
+user/assistant turns when a `conversation_id` is provided. This task reuses the
+existing conversation/message schema and requires no new migration.
+
+Long-term Memory is stored in `long_term_memories` after Migration `0010`. The
+`/api/v1/memories/extract` endpoint only returns candidates for explicit
+remember instructions; saving requires a separate user action. The Memory API
+and UI support user-scoped search, edit, and delete operations. Ordinary chat
+history is never copied into long-term Memory.
+
+Approval Runtime state is stored in `agent_approvals` after Migration `0011`.
+Tools opt into approval through `BaseTool.requires_approval`; approved runs
+resume the pending tool call, while rejected or expired requests become failed
+terminal runs. The current configured tools remain read-only.
+The v0.6 release gate has passed with full backend/frontend, Docker health,
+Migration, and sensitive-file verification.
 
 ## Run tests
 

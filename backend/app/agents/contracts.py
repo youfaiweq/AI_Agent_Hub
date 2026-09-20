@@ -48,6 +48,8 @@ class ToolExecutionResult:
     result: JSONValue = None
     error_code: str | None = None
     error_message: str | None = None
+    approval_required: bool = False
+    approval_message: str | None = None
 
 
 class AgentStepHandler(Protocol):

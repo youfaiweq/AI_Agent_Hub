@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from app.agents.contracts import AgentDecision, AgentRuntimeError, AgentStepHandler
 from app.agents.state import AgentState
+from app.memory.short_term import MemoryMessage, ShortTermMemory
 from app.rag.llms.base import LLMError, LLMMessage, LLMProvider
 from app.tools.registry import ToolDescriptor
 
@@ -20,6 +21,7 @@ class LLMDecisionHandler(AgentStepHandler):
         *,
         final_llm: LLMProvider | None = None,
         history_limit: int = 8,
+        context_token_budget: int = 2000,
         tool_results_limit: int = 4,
     ) -> None:
         if history_limit <= 0 or tool_results_limit <= 0:
@@ -28,17 +30,21 @@ class LLMDecisionHandler(AgentStepHandler):
         self.final_llm = final_llm or llm
         self.tools = tools
         self.system_prompt = system_prompt
-        self.history_limit = history_limit
+        self.memory = ShortTermMemory(history_limit, context_token_budget)
         self.tool_results_limit = tool_results_limit
 
     async def decide(self, state: AgentState) -> AgentDecision:
         prompt = self._system_prompt()
         messages = [LLMMessage(role="system", content=prompt)]
-        messages.extend(
-            LLMMessage(role=item["role"], content=item["content"])
-            for item in state.get("messages", [])[-self.history_limit :]
+        state_messages = [
+            MemoryMessage(role=item["role"], content=item["content"])
+            for item in state.get("messages", [])
             if item.get("role") in {"user", "assistant"}
-        )
+        ]
+        current_message = state_messages[-1:] if state_messages else []
+        history = self.memory.select(state_messages[:-1])
+        messages.extend(LLMMessage(role=item.role, content=item.content) for item in history.messages)
+        messages.extend(LLMMessage(role=item.role, content=item.content) for item in current_message)
         tool_results = state.get("tool_results", [])[-self.tool_results_limit :]
         if tool_results:
             messages.append(
@@ -63,6 +69,7 @@ class LLMDecisionHandler(AgentStepHandler):
                     "name": tool.name,
                     "description": tool.description,
                     "input_schema": tool.input_schema,
+                    "requires_approval": tool.requires_approval,
                 }
                 for tool in self.tools
             ],
