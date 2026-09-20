@@ -93,7 +93,7 @@ onMounted(async () => {
       <el-empty v-if="!loading && agents.length === 0" description="No Agents configured yet">
         <el-button type="primary" @click="openCreate">Create your first Agent</el-button>
       </el-empty>
-      <el-table v-else :data="agents" row-class-name="clickable-row" @row-click="openAgent">
+      <el-table v-else-if="!loading" :data="agents" row-class-name="clickable-row" @row-click="openAgent">
         <el-table-column prop="name" label="Agent" min-width="230">
           <template #default="{ row }">
             <div class="table-primary">{{ row.name }}</div>

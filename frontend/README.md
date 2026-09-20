@@ -35,6 +35,7 @@ The current frontend includes:
 - Agent configuration, non-streaming runs, and run history
 - Agent dangerous Tool approval and resume UI
 - Explicit long-term Memory extraction, confirmation, search, edit, and delete flows
+- Responsive v1.0 shell, release status, loading states, and mobile table handling
 - Loading, empty, validation, API error, and delete confirmation states
 
 Chat and RAG screens are intentionally deferred to later milestones.

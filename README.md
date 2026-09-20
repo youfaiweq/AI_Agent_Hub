@@ -8,8 +8,8 @@ Provider, the Agent Runtime, Tool Registry, initial read-only tools, and the
 first non-streaming Agent API/UI, bounded short-term Conversation memory,
 explicit long-term Memory, and the Approval Runtime are now in place. The v0.6
 release gate has passed; the Observability Adapter and deterministic Evaluation
-Pipeline are now in place. The v0.7 release gate has passed; v1.0 job-ready
-work is next.
+Pipeline are now in place. The v0.7 release gate has passed; the v1.0
+job-ready release package is complete.
 
 ## Requirements
 
@@ -115,6 +115,22 @@ LLM, so repeated evaluation runs remain reproducible.
 The v0.7 release gate verifies the complete Agent trace path, fail-open
 observability, repeatable evaluation fingerprints, full-stack checks, Docker
 health, and sensitive-file safety.
+
+The v1.0 release package includes [production deployment](docs/production.md),
+[architecture](docs/architecture.md), [ER diagram](docs/er-diagram.md),
+[API walkthrough](docs/api.md), [demo script](docs/demo-script.md),
+[interview questions](docs/interview-questions.md),
+[resume description](docs/resume-description.md),
+[security audit](docs/security-audit.md), [backup/recovery](docs/backup-recovery.md),
+and [screenshot guidance](docs/screenshots.md).
+
+## Production deployment
+
+The v1.0 deployment slice provides Backend, Frontend/Nginx, and private
+infrastructure services through `docker-compose.prod.yml`. Copy
+`.env.production.example` to the ignored `.env.production`, replace every
+placeholder, and follow [docs/production.md](docs/production.md). Backups and
+restore verification are documented in [docs/backup-recovery.md](docs/backup-recovery.md).
 
 ## Start frontend
 

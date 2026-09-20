@@ -188,7 +188,7 @@ onMounted(() => void load())
         <el-button :loading="loading" @click="load">Search</el-button>
       </div>
       <el-empty v-if="!loading && memories.length === 0" description="No long-term memories yet" />
-      <el-table v-else :data="memories">
+      <el-table v-else-if="!loading" :data="memories">
         <el-table-column prop="content" label="Memory" min-width="360" />
         <el-table-column label="Type" width="130">
           <template #default="{ row }"><el-tag size="small">{{ row.memory_type }}</el-tag></template>

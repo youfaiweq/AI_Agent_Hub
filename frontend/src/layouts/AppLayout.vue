@@ -49,7 +49,7 @@ function logout(): void {
 
       <div class="sidebar-footer">
         <span class="status-dot" />
-        Foundation v0.2
+        Job-ready v1.0
       </div>
     </el-aside>
 

@@ -21,7 +21,7 @@
 
 ## 当前仓库状态
 
-当前项目已完成 v0.7 Release Gate，并进入 v1.0 Job-ready Release，已有：
+当前项目已完成 v1.0 Job-ready Release，已有：
 
 - FastAPI 应用入口、配置、日志、统一异常处理
 - `/health` 与 Swagger/OpenAPI
@@ -31,9 +31,9 @@
 
 当前未完成：
 
-- Milestone 7 v1.0 Job-ready Release 及后续工作
+- 后续持续优化与发布维护工作
 
-下一项为 **Milestone 7 v1.0 Job-ready Release**；未经明确指令不得自动开始。
+Milestone 7 v1.0 Job-ready Release 已完成；未经明确指令不得开始后续维护工作。
 
 ---
 
@@ -559,3 +559,4 @@ Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，�
 **F6-T1 — Observability Adapter 已完成。** 下一项允许执行 **F6-T2 — Evaluation Pipeline**，但未收到明确开发指令前不要自动开始。
 **F6-T2 — Evaluation Pipeline 已完成。** 下一项允许执行 **F6-T3 — v0.7 Release Gate**，但未收到明确开发指令前不要自动开始。
 **F6-T3 — v0.7 Release Gate 已完成。** 下一项为 Milestone 7 v1.0 Job-ready Release，未经明确指令不得自动开始。
+**Milestone 7 — v1.0 Job-ready Release 已完成。** 已交付 Backend/Frontend/Nginx 镜像、Production Compose、安全 env 模板、备份/恢复文档、v1.0 响应式 UI、Demo Data、架构图/ER 图/API 文档、截图记录、演示脚本、面试题、简历描述、安全审计和错误演练。

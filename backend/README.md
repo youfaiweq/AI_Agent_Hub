@@ -106,6 +106,12 @@ the same dataset and retrieval configuration produce repeatable results.
 The v0.7 release gate has passed with complete trace-path, repeatability,
 backend/frontend, Docker health, Migration, and sensitive-file verification.
 
+For the containerized v1.0 deployment, the backend image runs `alembic upgrade
+head` before Uvicorn. The production Compose runbook is in the repository
+`docs/production.md`; do not copy development credentials into production.
+The v1.0 demo seed is `scripts/seed_demo.py`; it creates only user-owned demo
+configuration and never prints or persists the password.
+
 ## Run tests
 
 ```powershell

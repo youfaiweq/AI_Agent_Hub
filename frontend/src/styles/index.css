@@ -26,6 +26,10 @@ a {
   min-height: 100vh;
 }
 
+.app-main {
+  min-width: 0;
+}
+
 .app-sidebar {
   display: flex;
   flex-direction: column;
@@ -204,6 +208,7 @@ a {
 
 .content-card {
   min-height: 260px;
+  overflow: hidden;
   border-color: #e4e9f2;
   border-radius: 14px;
 }
@@ -617,6 +622,11 @@ a {
     display: inline-flex;
   }
 
+  .side-nav {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
   .app-header {
     padding-top: 22px;
   }
@@ -628,6 +638,14 @@ a {
   .page-intro,
   .detail-hero {
     display: block;
+  }
+
+  .app-header {
+    gap: 12px;
+  }
+
+  .app-header h1 {
+    font-size: 19px;
   }
 
   .page-intro .el-button,
@@ -675,5 +693,9 @@ a {
 
   .service-latency {
     display: none;
+  }
+
+  .content-card .el-table {
+    min-width: 620px;
   }
 }

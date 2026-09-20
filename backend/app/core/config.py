@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Runtime configuration loaded from environment variables or .env."""
 
     app_name: str = "AgentHub"
-    app_version: str = "0.2.0"
+    app_version: str = "1.0.0"
     environment: str = Field(
         default="development",
         validation_alias=AliasChoices("ENVIRONMENT", "APP_ENV"),
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://agenthub:agenthub@localhost:55432/agenthub"
     redis_url: str = "redis://localhost:6379/0"
-    qdrant_url: str = "http://localhost:6333"
+    qdrant_url: str = "http://127.0.0.1:6333"
     qdrant_collection_prefix: str = "agenthub_kb"
     embedding_provider: str = "hash"
     embedding_model_name: str = "hash-v1"

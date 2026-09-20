@@ -100,7 +100,7 @@ onMounted(() => {
       <el-empty v-if="!store.loading && store.items.length === 0" description="No knowledge bases yet">
         <el-button type="primary" @click="openCreate">Create your first one</el-button>
       </el-empty>
-      <el-table v-else :data="store.items" row-class-name="clickable-row" @row-click="openRow">
+      <el-table v-else-if="!store.loading" :data="store.items" row-class-name="clickable-row" @row-click="openRow">
         <el-table-column prop="name" label="Name" min-width="220">
           <template #default="{ row }">
             <div class="table-primary">{{ row.name }}</div>
