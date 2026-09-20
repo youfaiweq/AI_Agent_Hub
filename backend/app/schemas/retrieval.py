@@ -46,6 +46,9 @@ class EvaluationCase(BaseModel):
     case_id: str = Field(min_length=1, max_length=100)
     question: str = Field(min_length=1, max_length=20000)
     expected_chunk_ids: list[str] = Field(min_length=1, max_length=50)
+    expected_answer: str | None = Field(default=None, max_length=20000)
+    answer: str | None = Field(default=None, max_length=20000)
+    citation_chunk_ids: list[str] = Field(default_factory=list, max_length=50)
 
 
 class EvaluationDataset(BaseModel):
@@ -73,7 +76,10 @@ class EvaluationCaseResult(BaseModel):
     expected_chunk_ids: list[str]
     retrieved_chunk_ids: list[str]
     retrieval_hit: bool
+    retrieval_recall: float
     citation_correctness: float
+    answer_relevance: float | None = None
+    faithfulness: float | None = None
 
 
 class EvaluationMetrics(BaseModel):
@@ -82,6 +88,10 @@ class EvaluationMetrics(BaseModel):
     total_cases: int
     retrieval_recall: float
     citation_correctness: float
+    answer_relevance: float | None = None
+    faithfulness: float | None = None
+    answer_scored_cases: int = 0
+    faithfulness_scored_cases: int = 0
 
 
 class RetrievalEvaluationResponse(BaseModel):
@@ -89,6 +99,8 @@ class RetrievalEvaluationResponse(BaseModel):
 
     dataset_name: str
     dataset_version: str
+    dataset_fingerprint: str
+    result_fingerprint: str
     mode: RetrievalMode
     metrics: EvaluationMetrics
     cases: list[EvaluationCaseResult]

@@ -7,7 +7,9 @@ citation-grounded chat. Reranking is available through a configured external
 Provider, the Agent Runtime, Tool Registry, initial read-only tools, and the
 first non-streaming Agent API/UI, bounded short-term Conversation memory,
 explicit long-term Memory, and the Approval Runtime are now in place. The v0.6
-release gate has passed; Observability remains the next milestone.
+release gate has passed; the Observability Adapter and deterministic Evaluation
+Pipeline are now in place. The v0.7 release gate has passed; v1.0 job-ready
+work is next.
 
 ## Requirements
 
@@ -101,6 +103,18 @@ approval state with expiry and idempotent approve/reject/resume actions, and
 the Agent approval UI. The v0.6 release gate verifies that dangerous Tools are
 blocked before approval, can resume after approval, and reach explicit terminal
 states after rejection or expiry. No new side-effect Tool is enabled.
+F6-T1 adds a fail-open, provider-neutral Observability Adapter with Langfuse
+OTLP export for traces, LLM generations, retrieval, reranking, tools, memory,
+and Agent runs. It records latency, model, token usage, and errors without
+shipping message content or Tool arguments/results. Langfuse is opt-in through
+the `LANGFUSE_*` settings and requires no database migration.
+F6-T2 extends the versioned retrieval dataset with deterministic Retrieval
+Recall, Answer Relevance, Faithfulness, Citation Correctness, and dataset/result
+fingerprints. Answer metrics are lexical grounding proxies and do not invoke an
+LLM, so repeated evaluation runs remain reproducible.
+The v0.7 release gate verifies the complete Agent trace path, fail-open
+observability, repeatable evaluation fingerprints, full-stack checks, Docker
+health, and sensitive-file safety.
 
 ## Start frontend
 

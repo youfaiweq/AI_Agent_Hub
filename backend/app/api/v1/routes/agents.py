@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Response, status
 from app.core.config import get_settings
 from app.core.dependencies import (
     EmbeddingDependency,
+    ObservabilityDependency,
     SessionDependency,
     UserDependency,
     VectorStoreDependency,
@@ -35,10 +36,11 @@ def get_agent_runtime_service(
     session: SessionDependency,
     embedder: EmbeddingDependency,
     vector_store: VectorStoreDependency,
+    observability: ObservabilityDependency,
 ) -> AgentService:
     settings = get_settings()
     llm: LLMProvider = OpenAICompatibleLLMProvider(settings=settings)
-    return AgentService(session, llm, embedder, vector_store, settings)
+    return AgentService(session, llm, embedder, vector_store, settings, observability)
 
 
 ServiceDependency = Annotated[AgentService, Depends(get_agent_service)]

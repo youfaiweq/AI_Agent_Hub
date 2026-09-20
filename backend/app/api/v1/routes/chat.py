@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Response, status
 
 from app.core.dependencies import (
     EmbeddingDependency,
+    ObservabilityDependency,
     SessionDependency,
     UserDependency,
     VectorStoreDependency,
@@ -43,8 +44,9 @@ def get_chat_service(
     embedder: EmbeddingDependency,
     vector_store: VectorStoreDependency,
     llm: LLMDependency,
+    observability: ObservabilityDependency,
 ) -> ChatService:
-    return ChatService(session, DenseRetriever(embedder, vector_store), llm)
+    return ChatService(session, DenseRetriever(embedder, vector_store), llm, observability)
 
 
 ServiceDependency = Annotated[ChatService, Depends(get_chat_service)]

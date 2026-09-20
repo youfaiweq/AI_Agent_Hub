@@ -155,3 +155,18 @@ def test_evaluation_metrics_deduplicate_citations() -> None:
     assert hit.retrieval_hit is True
     assert hit.citation_correctness == 0.5
     assert summarize_cases([hit, miss]) == (0.5, 0.25)
+
+
+def test_evaluation_scores_answer_relevance_and_faithfulness() -> None:
+    result = evaluate_case(
+        ["launch"],
+        ["launch"],
+        expected_answer="The launch date is Friday.",
+        answer="The launch date is Friday.",
+        context_text="The launch date is Friday.",
+        citation_chunk_ids=["launch"],
+    )
+
+    assert result.answer_relevance == 1.0
+    assert result.faithfulness == 1.0
+    assert result.retrieval_recall == 1.0

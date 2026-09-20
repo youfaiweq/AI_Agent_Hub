@@ -14,6 +14,13 @@ from app.core.exceptions import AppError
 from app.memory.short_term import MemoryMessage, ShortTermMemory
 from app.models.agent import AgentApproval, AgentRunStatus, ApprovalStatus
 from app.models.agent_config import Agent
+from app.observability import (
+    NoopObservabilityAdapter,
+    ObservabilityAdapter,
+    ObservedLLMProvider,
+    new_trace_id,
+    observe,
+)
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.llms.base import LLMProvider
 from app.rag.llms.openai_compatible import OpenAICompatibleLLMProvider
@@ -55,12 +62,14 @@ class AgentService:
         embedder: EmbeddingProvider | None = None,
         vector_store: QdrantVectorStore | None = None,
         settings: Settings | None = None,
+        observability: ObservabilityAdapter | None = None,
     ) -> None:
         self.session = session
         self.llm = llm
         self.embedder = embedder
         self.vector_store = vector_store
         self.settings = settings or get_settings()
+        self.observability = observability or NoopObservabilityAdapter()
         self.agents = AgentRepository(session)
         self.runs = AgentRunRepository(session)
         self.tool_calls = ToolCallRepository(session)
@@ -117,6 +126,7 @@ class AgentService:
         agent = await self.get(user_id, agent_id)
         if self.llm is None or self.embedder is None or self.vector_store is None:
             raise AppError("AGENT_RUNTIME_UNAVAILABLE", "Agent runtime dependencies are not configured", 503)
+        trace_id = new_trace_id()
         conversation_history: list[MemoryMessage] = []
         if conversation_id is not None:
             conversation = await self.conversations.get_owned(conversation_id, user_id)
@@ -124,23 +134,30 @@ class AgentService:
                 raise AppError("CONVERSATION_NOT_FOUND", "Conversation was not found", 404)
             if knowledge_base_id is None and agent.knowledge_base_id is None:
                 knowledge_base_id = conversation.knowledge_base_id
-            history_records = await self.messages.list_for_conversation(
-                conversation.id,
-                limit=self.settings.agent_history_max_messages,
-            )
-            memory = ShortTermMemory(
-                max_messages=self.settings.agent_history_max_messages,
-                token_budget=self.settings.agent_context_token_budget,
-            )
-            conversation_history = list(
-                memory.select(
-                    [
-                        MemoryMessage(role=item.role, content=item.content)
-                        for item in history_records
-                        if item.role in {"user", "assistant"}
-                    ]
-                ).messages
-            )
+            async with observe(
+                self.observability,
+                kind="memory",
+                name="short_term.load",
+                trace_id=trace_id,
+                metadata={"max_messages": self.settings.agent_history_max_messages},
+            ):
+                history_records = await self.messages.list_for_conversation(
+                    conversation.id,
+                    limit=self.settings.agent_history_max_messages,
+                )
+                memory = ShortTermMemory(
+                    max_messages=self.settings.agent_history_max_messages,
+                    token_budget=self.settings.agent_context_token_budget,
+                )
+                conversation_history = list(
+                    memory.select(
+                        [
+                            MemoryMessage(role=item.role, content=item.content)
+                            for item in history_records
+                            if item.role in {"user", "assistant"}
+                        ]
+                    ).messages
+                )
             await self.messages.create(conversation.id, "user", message)
             self.conversations.touch(conversation)
             await self.session.commit()
@@ -168,7 +185,11 @@ class AgentService:
             "knowledge_base_id": selected_knowledge_base,
             "tool_calls": [],
             "tool_results": [],
-            "metadata": {"agent_name": agent.name, "model_name": agent.model_name},
+            "metadata": {
+                "agent_name": agent.name,
+                "model_name": agent.model_name,
+                "trace_id": trace_id,
+            },
         }
         await self.runs.update_state(
             run,
@@ -260,6 +281,7 @@ class AgentService:
     async def _execute_runtime(self, agent: Agent, state: AgentState) -> AgentState:
         if self.llm is None or self.embedder is None or self.vector_store is None:
             raise AppError("AGENT_RUNTIME_UNAVAILABLE", "Agent runtime dependencies are not configured", 503)
+        trace_id = str(state.get("metadata", {}).get("trace_id") or new_trace_id())
         registry = self._build_registry(agent)
         router_llm = self.llm
         final_llm = self.llm
@@ -272,6 +294,18 @@ class AgentService:
             final_llm = OpenAICompatibleLLMProvider(
                 settings=self.llm.settings.model_copy(update={"llm_model": agent.model_name})
             )
+        router_llm = ObservedLLMProvider(
+            router_llm,
+            self.observability,
+            trace_id=trace_id,
+            name="agent.router.generate",
+        )
+        final_llm = ObservedLLMProvider(
+            final_llm,
+            self.observability,
+            trace_id=trace_id,
+            name="agent.final.generate",
+        )
         handler = LLMDecisionHandler(
             router_llm,
             registry.list_descriptors(),
@@ -282,7 +316,24 @@ class AgentService:
             tool_results_limit=self.settings.agent_tool_results_max,
         )
         runtime = AgentRuntime(handler, registry, config=self._runtime_config(agent))
-        return await runtime.run(state)
+        async with (
+            observe(
+                self.observability,
+                kind="trace",
+                name="agent",
+                trace_id=trace_id,
+                metadata={"agent_id": str(agent.id)},
+            ),
+            observe(
+                self.observability,
+                kind="agent_run",
+                name=agent.name,
+                trace_id=trace_id,
+                model=agent.model_name,
+                metadata={"max_steps": agent.max_steps},
+            ),
+        ):
+            return await runtime.run(state)
 
     async def _persist_runtime_result(
         self,
@@ -398,10 +449,14 @@ class AgentService:
     def _build_registry(self, agent: Agent) -> ToolRegistry:
         dense = DenseRetriever(self.embedder, self.vector_store)
         hybrid = HybridRetriever(dense, SparseRetriever(self.session))
-        registry = ToolRegistry(timeout_seconds=self.settings.tool_timeout_seconds, recorder=self.tool_calls)
+        registry = ToolRegistry(
+            timeout_seconds=self.settings.tool_timeout_seconds,
+            recorder=self.tool_calls,
+            observability=self.observability,
+        )
         for name in agent.tool_names:
             if name == "knowledge_search":
-                registry.register(KnowledgeSearchTool(hybrid))
+                registry.register(KnowledgeSearchTool(hybrid, observability=self.observability))
             elif name == "calculator":
                 registry.register(CalculatorTool())
             elif name == "sql_query":

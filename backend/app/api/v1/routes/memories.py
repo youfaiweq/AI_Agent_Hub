@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
-from app.core.dependencies import SessionDependency, UserDependency
+from app.core.dependencies import ObservabilityDependency, SessionDependency, UserDependency
 from app.schemas.long_term_memory import (
     MemoryCreate,
     MemoryExtractRequest,
@@ -19,8 +19,11 @@ from app.services.long_term_memories import LongTermMemoryService
 router = APIRouter(prefix="/memories", tags=["memories"])
 
 
-def get_memory_service(session: SessionDependency) -> LongTermMemoryService:
-    return LongTermMemoryService(session)
+def get_memory_service(
+    session: SessionDependency,
+    observability: ObservabilityDependency,
+) -> LongTermMemoryService:
+    return LongTermMemoryService(session, observability)
 
 
 ServiceDependency = Annotated[LongTermMemoryService, Depends(get_memory_service)]
@@ -40,7 +43,7 @@ async def extract_memories(
 ) -> MemoryExtractResponse:
     """Extract explicit candidates without persisting them."""
 
-    return service.extract(payload)
+    return await service.extract(payload)
 
 
 @router.post("", response_model=MemoryResponse, status_code=status.HTTP_201_CREATED)

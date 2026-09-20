@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.dependencies import (
     EmbeddingDependency,
+    ObservabilityDependency,
     RerankerDependency,
     SessionDependency,
     UserDependency,
@@ -31,8 +32,9 @@ def get_retrieval_debug_service(
     embedder: EmbeddingDependency,
     vector_store: VectorStoreDependency,
     reranker: RerankerDependency,
+    observability: ObservabilityDependency,
 ) -> RetrievalDebugService:
-    return RetrievalDebugService(session, embedder, vector_store, reranker)
+    return RetrievalDebugService(session, embedder, vector_store, reranker, observability)
 
 
 ServiceDependency = Annotated[

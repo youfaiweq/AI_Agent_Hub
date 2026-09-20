@@ -10,6 +10,7 @@ from uuid import UUID
 
 from app.agents.contracts import ToolExecutionResult
 from app.agents.state import AgentState, JSONValue, ToolCallState
+from app.observability import ObservabilityAdapter, ObservationEvent, new_trace_id, safe_emit
 
 logger = logging.getLogger(__name__)
 
@@ -110,11 +111,13 @@ class ToolRegistry:
         *,
         timeout_seconds: float = 30.0,
         recorder: ToolCallRecorder | None = None,
+        observability: ObservabilityAdapter | None = None,
     ) -> None:
         if timeout_seconds <= 0:
             raise ToolRegistryError("timeout_seconds must be greater than zero")
         self.timeout_seconds = timeout_seconds
         self.recorder = recorder
+        self.observability = observability
         self._tools: dict[str, BaseTool] = {}
 
     def register(self, tool: BaseTool) -> None:
@@ -163,6 +166,14 @@ class ToolRegistry:
                     error_code="TOOL_APPROVAL_REQUIRED",
                     error_message=approval_message,
                 )
+                await self._emit_observation(
+                    state,
+                    call_id,
+                    tool_name,
+                    "waiting_approval",
+                    started,
+                    error_code="TOOL_APPROVAL_REQUIRED",
+                )
                 return ToolExecutionResult(
                     approval_required=True,
                     approval_message=approval_message,
@@ -171,6 +182,13 @@ class ToolRegistry:
                 result = await tool.execute(arguments, ToolContext.from_state(state))
             duration_ms = round((perf_counter() - started) * 1000, 2)
             await self._finish_record(record, "completed", result=result, duration_ms=duration_ms)
+            await self._emit_observation(
+                state,
+                call_id,
+                tool_name,
+                "completed",
+                started,
+            )
             logger.info(
                 "Tool execution completed",
                 extra={"tool_name": tool_name, "call_id": call_id, "duration_ms": duration_ms},
@@ -185,6 +203,7 @@ class ToolRegistry:
                 error_message=exc.message,
                 duration_ms=duration_ms,
             )
+            await self._emit_observation(state, call_id, tool_name, "failed", started, error_code=exc.code)
             logger.warning(
                 "Tool execution failed",
                 extra={"tool_name": tool_name, "call_id": call_id, "error_code": exc.code},
@@ -199,6 +218,7 @@ class ToolRegistry:
                 error_message="Tool execution timed out",
                 duration_ms=duration_ms,
             )
+            await self._emit_observation(state, call_id, tool_name, "failed", started, error_code="TOOL_TIMEOUT")
             logger.warning(
                 "Tool execution timed out",
                 extra={"tool_name": tool_name, "call_id": call_id},
@@ -215,6 +235,14 @@ class ToolRegistry:
                 error_code="TOOL_EXECUTION_FAILED",
                 error_message="Tool execution failed",
                 duration_ms=duration_ms,
+            )
+            await self._emit_observation(
+                state,
+                call_id,
+                tool_name,
+                "failed",
+                started,
+                error_code="TOOL_EXECUTION_FAILED",
             )
             logger.exception(
                 "Unexpected tool execution failure",
@@ -306,6 +334,37 @@ class ToolRegistry:
         if get_record is None:
             return None
         return await get_record(state["agent_run_id"], call_id)
+
+    async def _emit_observation(
+        self,
+        state: AgentState,
+        call_id: str,
+        tool_name: str,
+        status: str,
+        started: float,
+        *,
+        error_code: str | None = None,
+    ) -> None:
+        if self.observability is None:
+            return
+        from datetime import UTC, datetime
+
+        trace_id = state.get("metadata", {}).get("trace_id")
+        await safe_emit(
+            self.observability,
+            ObservationEvent(
+                kind="tool",
+                name=tool_name,
+                trace_id=trace_id if isinstance(trace_id, str) else new_trace_id(),
+                observation_id=call_id or new_trace_id(),
+                started_at=datetime.now(UTC),
+                ended_at=datetime.now(UTC),
+                latency_ms=round((perf_counter() - started) * 1000, 2),
+                status=status,
+                error_code=error_code,
+                metadata={"has_agent_run": state.get("agent_run_id") is not None},
+            ),
+        )
 
     async def _finish_record(
         self,

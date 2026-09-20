@@ -8,6 +8,13 @@ from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.memory.short_term import MemoryMessage, ShortTermMemory
 from app.models.conversation import Conversation, Message
+from app.observability import (
+    NoopObservabilityAdapter,
+    ObservabilityAdapter,
+    ObservedLLMProvider,
+    new_trace_id,
+    observe,
+)
 from app.rag.context.builder import Citation, ContextBuilder
 from app.rag.llms.base import LLMError, LLMMessage, LLMProvider
 from app.rag.retrievers.dense import DenseRetriever
@@ -30,10 +37,17 @@ SYSTEM_PROMPT = (
 
 
 class ChatService:
-    def __init__(self, session: AsyncSession, retriever: DenseRetriever, llm: LLMProvider) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        retriever: DenseRetriever,
+        llm: LLMProvider,
+        observability: ObservabilityAdapter | None = None,
+    ) -> None:
         self.session = session
         self.retriever = retriever
         self.llm = llm
+        self.observability = observability or NoopObservabilityAdapter()
         self.conversations = ConversationRepository(session)
         self.messages = MessageRepository(session)
         self.knowledge_bases = KnowledgeBaseRepository(session)
@@ -77,18 +91,42 @@ class ChatService:
         await self.session.commit()
 
     async def chat(self, user_id: UUID, conversation_id: UUID, message: str) -> ChatResponse:
+        trace_id = new_trace_id()
+        async with observe(
+            self.observability,
+            kind="trace",
+            name="chat",
+            trace_id=trace_id,
+            metadata={"conversation_id": str(conversation_id)},
+        ):
+            return await self._chat(user_id, conversation_id, message, trace_id)
+
+    async def _chat(
+        self,
+        user_id: UUID,
+        conversation_id: UUID,
+        message: str,
+        trace_id: str,
+    ) -> ChatResponse:
         conversation = await self.get_conversation(user_id, conversation_id)
         user_message = await self.messages.create(conversation.id, "user", message)
         self.conversations.touch(conversation)
         await self.session.commit()
 
         try:
-            retrieved = await self.retriever.retrieve(
-                conversation.knowledge_base_id,
-                message,
-                top_k=self.settings.chat_retrieval_top_k,
-                score_threshold=self.settings.retrieval_score_threshold,
-            )
+            async with observe(
+                self.observability,
+                kind="retrieval",
+                name="chat.retrieve",
+                trace_id=trace_id,
+                metadata={"top_k": self.settings.chat_retrieval_top_k},
+            ):
+                retrieved = await self.retriever.retrieve(
+                    conversation.knowledge_base_id,
+                    message,
+                    top_k=self.settings.chat_retrieval_top_k,
+                    score_threshold=self.settings.retrieval_score_threshold,
+                )
         except Exception as exc:
             raise AppError("RETRIEVAL_FAILED", "Knowledge retrieval failed", 502) from exc
 
@@ -97,17 +135,24 @@ class ChatService:
         if not citations:
             answer = NO_CONTEXT_ANSWER
         else:
-            history_records = await self.messages.list_for_conversation(
-                conversation.id,
-                limit=self.settings.chat_history_max_messages + 1,
-            )
-            history = self.memory.select(
-                [
-                    MemoryMessage(role=item.role, content=item.content)
-                    for item in history_records
-                    if item.id != user_message.id and item.role in {"user", "assistant"}
-                ]
-            )
+            async with observe(
+                self.observability,
+                kind="memory",
+                name="short_term.load",
+                trace_id=trace_id,
+                metadata={"max_messages": self.settings.chat_history_max_messages},
+            ):
+                history_records = await self.messages.list_for_conversation(
+                    conversation.id,
+                    limit=self.settings.chat_history_max_messages + 1,
+                )
+                history = self.memory.select(
+                    [
+                        MemoryMessage(role=item.role, content=item.content)
+                        for item in history_records
+                        if item.id != user_message.id and item.role in {"user", "assistant"}
+                    ]
+                )
             prompt = f"Knowledge-base context:\n{context.text}\n\nUser question:\n{message}"
             llm_messages = [LLMMessage(role="system", content=SYSTEM_PROMPT)]
             llm_messages.extend(
@@ -115,7 +160,11 @@ class ChatService:
             )
             llm_messages.append(LLMMessage(role="user", content=prompt))
             try:
-                response = await self.llm.generate(llm_messages)
+                response = await ObservedLLMProvider(
+                    self.llm,
+                    self.observability,
+                    trace_id=trace_id,
+                ).generate(llm_messages)
             except LLMError as exc:
                 raise AppError("LLM_GENERATION_FAILED", exc.message, 502) from exc
             if not response.content.strip():

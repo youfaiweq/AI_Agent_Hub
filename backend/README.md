@@ -93,6 +93,19 @@ terminal runs. The current configured tools remain read-only.
 The v0.6 release gate has passed with full backend/frontend, Docker health,
 Migration, and sensitive-file verification.
 
+F6-T1 adds optional Langfuse OTLP observability. Set `LANGFUSE_ENABLED=true`
+and provide the Langfuse public/secret credentials through local environment
+configuration to enable export. Events are fail-open and contain only trace
+metadata, latency, model, token usage, and error fields; message bodies and
+Tool arguments/results are not exported. No new migration is required.
+
+F6-T2 extends the versioned Retrieval Evaluation Dataset with deterministic
+Recall, Answer Relevance, Faithfulness, Citation Correctness, and dataset/result
+fingerprints. Answer metrics use lexical proxy scoring without an LLM call, so
+the same dataset and retrieval configuration produce repeatable results.
+The v0.7 release gate has passed with complete trace-path, repeatability,
+backend/frontend, Docker health, Migration, and sensitive-file verification.
+
 ## Run tests
 
 ```powershell

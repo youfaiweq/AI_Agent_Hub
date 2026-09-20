@@ -96,6 +96,6 @@ API 前缀统一为 `/api/v1`，返回尽量统一为 `{ "data": {}, "message": 
 当前已完成 v0.3 Naive RAG、Sparse Retrieval、RRF-based Hybrid Retrieval 和
 Reranker Adapter、Retrieval Debug、初始 Evaluation 和 v0.4 Release Gate；
 Agent Runtime Contracts、Tool Registry、初始只读 Tool、非流式 Agent API/UI、
-短期 Memory、显式长期 Memory 和 Approval Runtime 已完成；Langfuse 仍按后续
-任务实现。优先级为：正确性 >
+短期 Memory、显式长期 Memory、Approval Runtime、Observability Adapter、
+Evaluation Pipeline 和 v0.7 Release Gate 已完成。优先级为：正确性 >
 可维护性 > 可测试性 > 可观测性 > 性能优化 > 技术炫技。

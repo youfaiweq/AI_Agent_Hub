@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     agent_context_token_budget: int = 2000
     agent_tool_results_max: int = 4
     tool_timeout_seconds: float = 30.0
+    langfuse_enabled: bool = False
+    langfuse_base_url: str = "https://cloud.langfuse.com"
+    langfuse_public_key: SecretStr = SecretStr("")
+    langfuse_secret_key: SecretStr = SecretStr("")
+    langfuse_timeout_seconds: float = Field(default=3.0, gt=0)
     chat_history_max_messages: int = 8
     chat_context_token_budget: int = 2000
     chat_retrieval_top_k: int = 5

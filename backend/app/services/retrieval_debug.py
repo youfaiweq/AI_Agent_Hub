@@ -1,5 +1,7 @@
 """Retrieval debug orchestration service."""
 
+import hashlib
+import json
 import logging
 from time import perf_counter
 from uuid import UUID
@@ -9,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.models.knowledge_base import KnowledgeBase
+from app.observability import NoopObservabilityAdapter, ObservabilityAdapter, new_trace_id, observe
 from app.rag.embeddings.base import EmbeddingProvider
-from app.rag.evaluation.metrics import evaluate_case, summarize_cases
+from app.rag.evaluation.metrics import evaluate_case, summarize_answer_metrics, summarize_cases
 from app.rag.rerankers.base import BaseReranker, RerankedChunk, RerankerError
 from app.rag.retrievers.dense import DenseRetriever, RetrievalError
 from app.rag.retrievers.hybrid import HybridRetrievalError, HybridRetrievedChunk, HybridRetriever
@@ -39,12 +42,14 @@ class RetrievalDebugService:
         embedder: EmbeddingProvider,
         vector_store: QdrantVectorStore,
         reranker: BaseReranker,
+        observability: ObservabilityAdapter | None = None,
     ) -> None:
         self.knowledge_bases = KnowledgeBaseRepository(session)
         self.dense = DenseRetriever(embedder, vector_store)
         self.sparse = SparseRetriever(session)
         self.hybrid = HybridRetriever(self.dense, self.sparse)
         self.reranker = reranker
+        self.observability = observability or NoopObservabilityAdapter()
 
     async def debug(
         self,
@@ -55,9 +60,17 @@ class RetrievalDebugService:
         knowledge_base = await self.knowledge_bases.get_owned(knowledge_base_id, user_id)
         if knowledge_base is None:
             raise AppError("KNOWLEDGE_BASE_NOT_FOUND", "Knowledge base was not found", 404)
+        trace_id = new_trace_id()
         started = perf_counter()
         try:
-            items = await self._retrieve_items(knowledge_base, payload)
+            async with observe(
+                self.observability,
+                kind="retrieval",
+                name=f"retrieval.debug.{payload.mode}",
+                trace_id=trace_id,
+                metadata={"top_k": payload.top_k, "candidate_k": payload.candidate_k},
+            ):
+                items = await self._retrieve_items(knowledge_base, payload, trace_id)
         except RerankerError as exc:
             raise AppError("RERANKER_FAILED", exc.message, 502) from exc
         except (RetrievalError, SparseRetrievalError, HybridRetrievalError) as exc:
@@ -106,6 +119,10 @@ class RetrievalDebugService:
             metrics = evaluate_case(
                 case.expected_chunk_ids,
                 [item.chunk_id for item in debug.items],
+                expected_answer=case.expected_answer,
+                answer=case.answer,
+                context_text="\n".join(item.snippet for item in debug.items),
+                citation_chunk_ids=case.citation_chunk_ids or None,
             )
             case_metrics.append(metrics)
             case_results.append(
@@ -115,26 +132,48 @@ class RetrievalDebugService:
                     expected_chunk_ids=case.expected_chunk_ids,
                     retrieved_chunk_ids=list(metrics.retrieved_chunk_ids),
                     retrieval_hit=metrics.retrieval_hit,
+                    retrieval_recall=metrics.retrieval_recall,
                     citation_correctness=metrics.citation_correctness,
+                    answer_relevance=metrics.answer_relevance,
+                    faithfulness=metrics.faithfulness,
                 )
             )
         retrieval_recall, citation_correctness = summarize_cases(case_metrics)
+        answer_relevance, faithfulness, answer_scored, faithfulness_scored = summarize_answer_metrics(
+            case_metrics
+        )
+        dataset_fingerprint = _fingerprint(payload.dataset.model_dump(mode="json"))
+        result_fingerprint = _fingerprint(
+            {
+                "dataset_fingerprint": dataset_fingerprint,
+                "mode": payload.mode,
+                "top_k": payload.top_k,
+                "candidate_k": payload.candidate_k,
+                "cases": [case.model_dump(mode="json") for case in case_results],
+            }
+        )
         return RetrievalEvaluationResponse(
             dataset_name=payload.dataset.name,
             dataset_version=payload.dataset.version,
             mode=payload.mode,
+            dataset_fingerprint=dataset_fingerprint,
+            result_fingerprint=result_fingerprint,
             metrics=EvaluationMetrics(
                 total_cases=len(case_results),
                 retrieval_recall=retrieval_recall,
                 citation_correctness=citation_correctness,
+                answer_relevance=answer_relevance,
+                faithfulness=faithfulness,
+                answer_scored_cases=answer_scored,
+                faithfulness_scored_cases=faithfulness_scored,
             ),
             cases=case_results,
         )
-
     async def _retrieve_items(
         self,
         knowledge_base: KnowledgeBase,
         payload: RetrievalDebugRequest,
+        trace_id: str,
     ) -> list[RetrievalDebugItem]:
         if payload.mode == "dense":
             chunks = await self.dense.retrieve(
@@ -161,11 +200,18 @@ class RetrievalDebugService:
         if payload.mode == "hybrid":
             return [self._hybrid_item(chunk, rank) for rank, chunk in enumerate(hybrid, 1)]
 
-        reranked = await self.reranker.rerank(
-            payload.query,
-            hybrid,
-            top_k=payload.top_k,
-        )
+        async with observe(
+            self.observability,
+            kind="rerank",
+            name="retrieval.rerank",
+            trace_id=trace_id,
+            metadata={"candidate_count": len(hybrid), "top_k": payload.top_k},
+        ):
+            reranked = await self.reranker.rerank(
+                payload.query,
+                hybrid,
+                top_k=payload.top_k,
+            )
         hybrid_by_id = {chunk.chunk_id: chunk for chunk in hybrid}
         return [
             self._reranked_item(chunk, hybrid_by_id.get(chunk.chunk_id), rank)
@@ -217,3 +263,8 @@ class RetrievalDebugService:
             rerank_score=chunk.rerank_score,
             final_rank=rank,
         )
+
+
+def _fingerprint(value: object) -> str:
+    canonical = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

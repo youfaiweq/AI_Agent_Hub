@@ -14,6 +14,7 @@ from app.core.exceptions import AppError
 from app.core.security import decode_access_token
 from app.integrations.minio import MinioAdapter
 from app.models.user import User
+from app.observability import LangfuseAdapter, ObservabilityAdapter
 from app.rag.embeddings import EmbeddingProvider, HashEmbeddingProvider
 from app.rag.rerankers import BaseReranker, create_reranker
 from app.rag.vectorstores.qdrant import QdrantVectorStore
@@ -84,3 +85,12 @@ def get_reranker() -> BaseReranker:
 
 
 RerankerDependency = Annotated[BaseReranker, Depends(get_reranker)]
+
+
+def get_observability() -> ObservabilityAdapter:
+    """Return a fail-open observability adapter for the current request."""
+
+    return LangfuseAdapter()
+
+
+ObservabilityDependency = Annotated[ObservabilityAdapter, Depends(get_observability)]

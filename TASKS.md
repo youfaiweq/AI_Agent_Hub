@@ -21,7 +21,7 @@
 
 ## 当前仓库状态
 
-当前项目已完成 v0.6 Release Gate，并进入 v0.7 Observability & Evaluation，已有：
+当前项目已完成 v0.7 Release Gate，并进入 v1.0 Job-ready Release，已有：
 
 - FastAPI 应用入口、配置、日志、统一异常处理
 - `/health` 与 Swagger/OpenAPI
@@ -31,9 +31,9 @@
 
 当前未完成：
 
-- F6-T1 Observability Adapter 及后续里程碑
+- Milestone 7 v1.0 Job-ready Release 及后续工作
 
-下一项为 **F6-T1 Observability Adapter**；未经明确指令不得自动开始。
+下一项为 **Milestone 7 v1.0 Job-ready Release**；未经明确指令不得自动开始。
 
 ---
 
@@ -456,12 +456,27 @@ Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，�
 
 ## F6-T1 — Observability Adapter
 
+- 状态：`[x]`
+
 - Langfuse Adapter
 - Trace、LLM、Retrieval、Rerank、Tool、Memory、Agent Run
 - latency、token usage、model、error
 - Langfuse 不可用时不阻塞主业务
 
+实现说明：
+
+- 新增 provider-neutral `ObservabilityAdapter`、`ObservationEvent`、`Noop` 和 `InMemory` Adapter
+- `LangfuseAdapter` 使用 OTLP trace ingestion，配置缺失或发送失败时 fail-open，不阻塞业务请求
+- Chat、Agent Run、LLM、Retrieval、Rerank、Tool Registry、短期/长期 Memory 均有观测边界
+- 仅记录 trace/span 标识、耗时、模型、token usage、错误码和安全元数据，不上传消息正文、Tool 参数/结果或 API Key
+- 新增 `LANGFUSE_ENABLED`、`LANGFUSE_BASE_URL`、`LANGFUSE_PUBLIC_KEY`、`LANGFUSE_SECRET_KEY` 和 timeout 配置
+- 本 Task 不新增数据库结构或 Migration
+
+验收：Observability 单元测试、全量 pytest、Ruff、前端构建、Compose/Docker 健康和 Alembic 检查均已通过。
+
 ## F6-T2 — Evaluation Pipeline
+
+- 状态：`[x]`
 
 - Dataset 版本化
 - Retrieval Recall
@@ -470,9 +485,28 @@ Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，�
 - Citation Correctness
 - 可重复运行并输出结果
 
+实现说明：
+
+- 保留并扩展 versioned request-scoped Dataset，新增 expected/actual answer、实际 citation chunk ids
+- 新增 deterministic Retrieval Recall、Answer Relevance、Faithfulness 和 Citation Correctness per-case/aggregate 指标
+- Answer Relevance 使用 token-overlap F1，Faithfulness 使用 answer/context token grounding proxy，不调用 LLM
+- 返回 dataset fingerprint 和 result fingerprint，保证同一 Dataset、检索配置和结果可重复比较
+- 本 Task 不新增数据库结构或 Migration
+
+验收：评测单元/API 测试、全量 pytest、Ruff、前端构建、Compose/Docker 健康和 Alembic 检查均已通过。
+
 ## F6-T3 — v0.7 Release Gate
 
+- 状态：`[x]`
+
 一次 Agent 请求可在 Trace 中看到完整执行链路，评测结果可重复、可比较。
+
+验收记录：
+
+- Observability Adapter 覆盖 Trace、LLM、Retrieval、Rerank、Tool、Memory 和 Agent Run
+- Langfuse 未配置或不可用时主业务保持可用
+- Evaluation Dataset 的 dataset/result fingerprint 在重复运行中一致
+- 后端、前端、Compose、Docker 健康、Alembic 和敏感文件检查均已通过
 
 ---
 
@@ -522,3 +556,6 @@ Agent 遇到副作用 Tool 时不会自动执行；用户批准后可恢复，�
 **F5-T2 — Explicit Long-term Memory 已完成。** 下一项允许执行 **F5-T3 — Approval Runtime**，但未收到明确开发指令前不要自动开始。
 **F5-T3 — Approval Runtime 已完成。** 下一项允许执行 **F5-T4 — v0.6 Release Gate**，但未收到明确开发指令前不要自动开始。
 **F5-T4 — v0.6 Release Gate 已完成。** 下一项允许执行 **F6-T1 — Observability Adapter**，但未收到明确开发指令前不要自动开始。
+**F6-T1 — Observability Adapter 已完成。** 下一项允许执行 **F6-T2 — Evaluation Pipeline**，但未收到明确开发指令前不要自动开始。
+**F6-T2 — Evaluation Pipeline 已完成。** 下一项允许执行 **F6-T3 — v0.7 Release Gate**，但未收到明确开发指令前不要自动开始。
+**F6-T3 — v0.7 Release Gate 已完成。** 下一项为 Milestone 7 v1.0 Job-ready Release，未经明确指令不得自动开始。
